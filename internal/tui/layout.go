@@ -9,8 +9,8 @@ import (
 // rect represents a pane's position in the grid
 type rect struct {
 	x, y, w, h int
-	command     string
-	active      bool
+	command    string
+	active     bool
 }
 
 // RenderLayout generates an ASCII diagram from a layout config.
