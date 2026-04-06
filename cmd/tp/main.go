@@ -82,9 +82,14 @@ func runDefault() {
 		}
 	}
 
-	// Only pre-select defaults when creating a new session
+	// When creating a new session, use saved selections (falling back to defaults)
 	defaults := cfg.Defaults
-	if sessionExists {
+	if !sessionExists {
+		state := config.LoadState(profile)
+		if len(state.LastSelection) > 0 {
+			defaults = state.LastSelection
+		}
+	} else {
 		defaults = nil
 	}
 
@@ -94,6 +99,26 @@ func runDefault() {
 	}
 
 	closeWindows(cfg, closed)
+
+	// Save current selection state (open + newly selected - closed)
+	var allOpen []string
+	for w := range openWindows {
+		allOpen = append(allOpen, w)
+	}
+	for _, p := range selected {
+		allOpen = append(allOpen, p.Name)
+	}
+	closedNames := make(map[string]bool)
+	for _, p := range closed {
+		closedNames[p.Name] = true
+	}
+	var finalSelection []string
+	for _, name := range allOpen {
+		if !closedNames[name] {
+			finalSelection = append(finalSelection, name)
+		}
+	}
+	config.SaveState(profile, finalSelection)
 
 	if len(selected) > 0 {
 		createWindows(cfg, selected, sessionExists)
