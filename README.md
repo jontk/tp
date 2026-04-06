@@ -16,11 +16,17 @@ Built for workflows where you have many projects but only work on a handful at a
 
 ## Install
 
+### Pre-built binaries
+
+Download from the [releases page](https://github.com/jontk/tp/releases) for Linux and macOS (amd64/arm64).
+
+### Go install
+
 ```bash
 go install github.com/jontk/tp/cmd/tp@latest
 ```
 
-Or build from source:
+### Build from source
 
 ```bash
 git clone https://github.com/jontk/tp.git
