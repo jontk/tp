@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/jontk/tp/internal/config"
 	"github.com/jontk/tp/internal/projects"
 )
 
@@ -32,9 +33,10 @@ type Model struct {
 	infoCache   map[string]projects.GitInfo
 	infoPending string // path currently being fetched
 	showPreview bool
+	cfg         *config.Config
 }
 
-func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string, showPreview bool) Model {
+func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string, showPreview bool, cfg *config.Config) Model {
 	ti := textinput.New()
 	ti.Placeholder = "type to filter..."
 	ti.Prompt = "/ "
@@ -72,6 +74,7 @@ func NewPicker(projs []projects.Project, defaults []string, openWindows map[stri
 		sortMode:    sortMode,
 		showPreview: showPreview,
 		infoCache:   make(map[string]projects.GitInfo),
+		cfg:         cfg,
 	}
 }
 
@@ -398,6 +401,19 @@ func (m Model) renderPreview(width int) string {
 		b.WriteString(previewLabelStyle.Render("active  "))
 		b.WriteString(dirStyle.Render(rt))
 		b.WriteString("\n")
+	}
+
+	// Layout diagram
+	if m.cfg != nil {
+		layout := m.cfg.LayoutForProject(p.Name)
+		if len(layout) > 1 {
+			diagW := width - 2
+			diagH := 7
+			if diagW > 10 {
+				b.WriteString("\n")
+				b.WriteString(dirStyle.Render(RenderLayout(layout, diagW, diagH)))
+			}
+		}
 	}
 
 	return previewBorderStyle.Width(width).Render(b.String())
