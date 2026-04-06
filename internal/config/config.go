@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -50,6 +51,57 @@ func PathForProfile(profile string) string {
 		name = profile + ".yaml"
 	}
 	return filepath.Join(configDir, "tmux-projects", name)
+}
+
+// ListProfiles returns all available profiles by scanning the config dir.
+// The default profile is returned as "" with session name from config.yaml.
+func ListProfiles() ([]Profile, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		configDir = filepath.Join(os.Getenv("HOME"), ".config")
+	}
+	dir := filepath.Join(configDir, "tmux-projects")
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var profiles []Profile
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".yaml")
+		profileName := name
+		if name == "config" {
+			profileName = ""
+		}
+
+		cfg, err := Load(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			continue
+		}
+
+		profiles = append(profiles, Profile{
+			Name:    profileName,
+			Session: cfg.Session,
+		})
+	}
+
+	return profiles, nil
+}
+
+type Profile struct {
+	Name    string // "" for default
+	Session string
+}
+
+func (p Profile) DisplayName() string {
+	if p.Name == "" {
+		return "default"
+	}
+	return p.Name
 }
 
 func DefaultLayout() []PaneConfig {

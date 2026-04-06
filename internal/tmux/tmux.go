@@ -74,6 +74,10 @@ func KillSession(name string) error {
 	return run("kill-session", "-t", name)
 }
 
+func SwitchClient(session string) error {
+	return run("switch-client", "-t", session)
+}
+
 func WindowIndex(session, name string) (string, error) {
 	cmd := exec.Command("tmux", "list-windows", "-t", session, "-F", "#{window_index}:#{window_name}")
 	out, err := cmd.Output()

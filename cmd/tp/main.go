@@ -42,6 +42,8 @@ func main() {
 		runList()
 	case "kill":
 		runKill()
+	case "switch":
+		runSwitch()
 	case "validate":
 		runValidate()
 	case "config":
@@ -126,8 +128,14 @@ func runDefault() {
 		return
 	}
 
-	// Attach if not already inside tmux
-	if !tmux.InsideTmux() {
+	if tmux.InsideTmux() {
+		// If we just created a new session from inside tmux, switch to it
+		if !sessionExists {
+			if err := tmux.SwitchClient(cfg.Session); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to switch to session: %v\n", err)
+			}
+		}
+	} else {
 		cc := tmux.IsITerm()
 		for _, arg := range os.Args[1:] {
 			if arg == "--cc" {
@@ -157,6 +165,84 @@ func runList() {
 
 	for _, w := range windows {
 		fmt.Println(w)
+	}
+}
+
+func runSwitch() {
+	profiles, err := config.ListProfiles()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to list profiles: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(profiles) == 0 {
+		fmt.Fprintln(os.Stderr, "no profiles found")
+		os.Exit(1)
+	}
+
+	// Build list with status
+	type profileEntry struct {
+		profile config.Profile
+		active  bool
+	}
+	var entries []profileEntry
+	for _, p := range profiles {
+		entries = append(entries, profileEntry{
+			profile: p,
+			active:  tmux.SessionExists(p.Session),
+		})
+	}
+
+	// If only one profile, nothing to switch to
+	if len(entries) == 1 {
+		fmt.Println("only one profile configured")
+		return
+	}
+
+	// Print numbered list
+	fmt.Println("profiles:")
+	for i, e := range entries {
+		status := "  "
+		if e.active {
+			status = "* "
+		}
+		fmt.Printf("  %s%d) %s (session: %s)\n", status, i+1, e.profile.DisplayName(), e.profile.Session)
+	}
+	fmt.Print("\nswitch to [1-" + fmt.Sprintf("%d", len(entries)) + "]: ")
+
+	// Read selection
+	var choice int
+	if _, err := fmt.Scanf("%d", &choice); err != nil || choice < 1 || choice > len(entries) {
+		fmt.Fprintln(os.Stderr, "cancelled")
+		return
+	}
+
+	selected := entries[choice-1]
+
+	if !selected.active {
+		// Launch the profile's picker to create the session
+		profile = selected.profile.Name
+		runDefault()
+		return
+	}
+
+	// Switch to the existing session
+	if tmux.InsideTmux() {
+		if err := tmux.SwitchClient(selected.profile.Session); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to switch: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		cc := tmux.IsITerm()
+		for _, arg := range os.Args[1:] {
+			if arg == "--cc" {
+				cc = true
+			}
+		}
+		if err := tmux.Attach(selected.profile.Session, cc); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to attach: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -233,6 +319,7 @@ Usage:
   tp              Open picker — creates session or manages existing one
   tp list         List current session windows
   tp kill         Kill the current session
+  tp switch       Switch between profile sessions
   tp validate     Validate config file
   tp config       Open config in $EDITOR
   tp help         Show this help
