@@ -407,11 +407,17 @@ func (m Model) renderPreview(width int) string {
 	if m.cfg != nil {
 		layout := m.cfg.LayoutForProject(p.Name)
 		if len(layout) > 1 {
-			diagW := width - 2
+			// Account for border padding (2 left + 2 right) and border itself (1+1)
+			diagW := width - 6
 			diagH := 7
 			if diagW > 10 {
 				b.WriteString("\n")
-				b.WriteString(dirStyle.Render(RenderLayout(layout, diagW, diagH)))
+				diagram := RenderLayout(layout, diagW, diagH)
+				// Render each line individually to avoid lipgloss reformatting
+				for _, line := range strings.Split(strings.TrimRight(diagram, "\n"), "\n") {
+					b.WriteString(dirStyle.Render(line))
+					b.WriteString("\n")
+				}
 			}
 		}
 	}
