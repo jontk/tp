@@ -5,43 +5,95 @@
 
 # Directories to scan for projects.
 # Each subdirectory within these paths becomes a selectable project.
-# Add multiple directories if your projects span different orgs or locations.
 source_dirs:
     - /mnt/export/jontk/src/github.com/jontk
     - /mnt/export/jontk/src/github.com/brokkr
-    - /mnt/export/jontk/src/github.com/asgardr-ai
 
 # Projects pre-selected in the picker on launch.
-# These are toggled on by default — you can still deselect them.
 defaults:
     - nixconf
     - s9s
-    - s9s-web
 
 # Tmux session name.
 session: projects
 
-# Pane layout for each project window.
-# The split topology is: left | right-top / right-bottom
+# Layout as sequential tmux splits.
 #
-#   position: left, right-top, right-bottom
+# The first entry is the initial pane (no split). Each subsequent entry
+# splits the last created pane.
+#
+#   split:    horizontal (side-by-side) or vertical (top/bottom)
+#   percent:  size of the new pane as a percentage
 #   command:  command to run in the pane (empty string = interactive shell)
-#   percent:  split percentage (left percent is width, right percents are height)
 #   active:   which pane receives focus (only one should be true)
+#
+# Default layout: claude (left 40%) | vim (top-right) / shell (bottom-right)
+#
+#   ┌──────────────┬──────────────┐
+#   │              │   vim .      │
+#   │   claude     │              │
+#   │   --continue ├──────────────┤
+#   │              │    shell     │
+#   │              │  (active)    │
+#   └──────────────┴──────────────┘
+#
 layout:
-    panes:
-        # Left pane (40% width) - Claude Code with session resume
-        - command: claude --continue || claude
-          percent: 40
-          position: left
+    - command: claude --continue || claude
+    - split: horizontal
+      percent: 60
+      command: vim .
+    - split: vertical
+      percent: 50
+      command: ""
+      active: true
 
-        # Top-right pane (50% of right side height) - Editor
-        - command: vim .
-          percent: 50
-          position: right-top
-
-        # Bottom-right pane (50% of right side height) - Shell
-        - command: ""
-          percent: 50
-          position: right-bottom
-          active: true
+# Per-project layout overrides.
+# Any project listed here uses its own layout instead of the global one.
+#
+# Example: s9s-web with a dev server pane
+#
+#   ┌──────────────┬──────────────┐
+#   │              │   vim .      │
+#   │   claude     ├──────────────┤
+#   │   --continue │  npm run dev │
+#   │              ├──────────────┤
+#   │              │    shell     │
+#   └──────────────┴──────────────┘
+#
+# projects:
+#     s9s-web:
+#         layout:
+#             - command: claude --continue || claude
+#             - split: horizontal
+#               percent: 60
+#               command: vim .
+#             - split: vertical
+#               percent: 66
+#               command: npm run dev
+#             - split: vertical
+#               percent: 50
+#               command: ""
+#               active: true
+#
+# Example: wide-screen 3-column layout
+#
+#   ┌──────────┬──────────┬──────────┐
+#   │          │          │  shells  │
+#   │  claude  │   vim    ├──────────┤
+#   │          │          │  shells  │
+#   └──────────┴──────────┴──────────┘
+#
+# projects:
+#     big-project:
+#         layout:
+#             - command: claude --continue || claude
+#             - split: horizontal
+#               percent: 66
+#               command: vim .
+#             - split: horizontal
+#               percent: 50
+#               command: ""
+#             - split: vertical
+#               percent: 50
+#               command: ""
+#               active: true

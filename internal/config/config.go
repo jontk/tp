@@ -8,21 +8,22 @@ import (
 )
 
 type Config struct {
-	SourceDirs []string     `yaml:"source_dirs"`
-	Defaults   []string     `yaml:"defaults"`
-	Session    string       `yaml:"session"`
-	Layout     LayoutConfig `yaml:"layout"`
+	SourceDirs []string                 `yaml:"source_dirs"`
+	Defaults   []string                 `yaml:"defaults"`
+	Session    string                   `yaml:"session"`
+	Layout     []PaneConfig             `yaml:"layout"`
+	Projects   map[string]ProjectConfig `yaml:"projects,omitempty"`
 }
 
-type LayoutConfig struct {
-	Panes []PaneConfig `yaml:"panes"`
+type ProjectConfig struct {
+	Layout []PaneConfig `yaml:"layout"`
 }
 
 type PaneConfig struct {
-	Command  string `yaml:"command"`
-	Percent  int    `yaml:"percent"`
-	Position string `yaml:"position"`
-	Active   bool   `yaml:"active,omitempty"`
+	Command string `yaml:"command"`
+	Split   string `yaml:"split,omitempty"`
+	Percent int    `yaml:"percent,omitempty"`
+	Active  bool   `yaml:"active,omitempty"`
 }
 
 func DefaultPath() string {
@@ -41,6 +42,14 @@ func PathForProfile(profile string) string {
 	return filepath.Join(configDir, "tmux-projects", name)
 }
 
+func DefaultLayout() []PaneConfig {
+	return []PaneConfig{
+		{Command: "claude --continue || claude"},
+		{Split: "horizontal", Percent: 60, Command: "vim ."},
+		{Split: "vertical", Percent: 50, Command: "", Active: true},
+	}
+}
+
 func DefaultConfig() *Config {
 	return &Config{
 		SourceDirs: []string{
@@ -48,14 +57,15 @@ func DefaultConfig() *Config {
 		},
 		Defaults: []string{},
 		Session:  "projects",
-		Layout: LayoutConfig{
-			Panes: []PaneConfig{
-				{Command: "claude --continue", Percent: 40, Position: "left"},
-				{Command: "vim .", Percent: 50, Position: "right-top"},
-				{Command: "", Percent: 50, Position: "right-bottom", Active: true},
-			},
-		},
+		Layout:   DefaultLayout(),
 	}
+}
+
+func (c *Config) LayoutForProject(name string) []PaneConfig {
+	if p, ok := c.Projects[name]; ok && len(p.Layout) > 0 {
+		return p.Layout
+	}
+	return c.Layout
 }
 
 func Load(path string) (*Config, error) {
@@ -79,8 +89,8 @@ func Load(path string) (*Config, error) {
 	if cfg.Session == "" {
 		cfg.Session = "projects"
 	}
-	if len(cfg.Layout.Panes) == 0 {
-		cfg.Layout = DefaultConfig().Layout
+	if len(cfg.Layout) == 0 {
+		cfg.Layout = DefaultLayout()
 	}
 
 	return cfg, nil
@@ -101,10 +111,10 @@ func WriteDefault(path string) error {
 		"# source_dirs: directories to scan for projects (each subdirectory = one project)\n" +
 		"# defaults: projects pre-selected in the picker on launch\n" +
 		"# session: tmux session name\n" +
-		"# layout.panes: pane layout for each project window\n" +
-		"#   position: left, right-top, right-bottom\n" +
-		"#   command: command to run in the pane (empty = shell)\n" +
-		"#   percent: split percentage\n" +
+		"# layout: pane layout as sequential tmux splits\n" +
+		"#   split: horizontal (side-by-side) or vertical (top/bottom)\n" +
+		"#   percent: size of the new pane as a percentage\n" +
+		"#   command: command to run (empty = shell)\n" +
 		"#   active: which pane gets focus\n\n"
 
 	return os.WriteFile(path, []byte(header+string(data)), 0644)

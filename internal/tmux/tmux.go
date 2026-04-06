@@ -109,54 +109,56 @@ func IsITerm() bool {
 	return os.Getenv("TERM_PROGRAM") == "iTerm.app" || os.Getenv("LC_TERMINAL") == "iTerm2"
 }
 
-func SetupProjectWindow(session, name, dir string, layout config.LayoutConfig) error {
+func SetupProjectWindow(session, name, dir string, layout []config.PaneConfig) error {
 	target := fmt.Sprintf("%s:%s", session, name)
 
 	SetWindowOption(target, "automatic-rename", "off")
 
-	// Split: create right pane (horizontal split)
-	rightPercent := 60
-	if len(layout.Panes) > 0 {
-		rightPercent = 100 - layout.Panes[0].Percent
-	}
-	if err := SplitWindow(target+".1", dir, true, rightPercent); err != nil {
-		return fmt.Errorf("split horizontal: %w", err)
+	if len(layout) == 0 {
+		return nil
 	}
 
-	// Split right pane vertically
-	bottomPercent := 50
-	if len(layout.Panes) > 2 {
-		bottomPercent = layout.Panes[2].Percent
-	}
-	if err := SplitWindow(target+".2", dir, false, bottomPercent); err != nil {
-		return fmt.Errorf("split vertical: %w", err)
+	// First entry is the initial pane (no split needed).
+	// Subsequent entries split the last created pane.
+	// paneIndex tracks the tmux pane number of the last created pane.
+	lastPane := 1 // tmux pane indices start at 1
+	activePaneIdx := 1
+
+	for i, pane := range layout {
+		if i > 0 {
+			// Split the last created pane
+			horizontal := pane.Split == "horizontal"
+			percent := pane.Percent
+			if percent == 0 {
+				percent = 50
+			}
+			splitTarget := fmt.Sprintf("%s.%d", target, lastPane)
+			if err := SplitWindow(splitTarget, dir, horizontal, percent); err != nil {
+				return fmt.Errorf("split pane %d: %w", i, err)
+			}
+			lastPane = i + 1
+		}
+
+		if pane.Active {
+			activePaneIdx = i + 1
+		}
 	}
 
 	time.Sleep(100 * time.Millisecond)
 
-	// Send commands to panes
-	paneTargets := []string{target + ".1", target + ".2", target + ".3"}
-	activePaneIdx := 2 // default: bottom-right shell
-
-	for i, pane := range layout.Panes {
-		if i >= len(paneTargets) {
-			break
-		}
+	// Send commands to all panes
+	for i, pane := range layout {
 		if pane.Command != "" {
-			if err := SendKeys(paneTargets[i], pane.Command); err != nil {
+			paneTarget := fmt.Sprintf("%s.%d", target, i+1)
+			if err := SendKeys(paneTarget, pane.Command); err != nil {
 				return fmt.Errorf("send keys to pane %d: %w", i, err)
 			}
 		}
-		if pane.Active {
-			activePaneIdx = i
-		}
 	}
 
 	time.Sleep(100 * time.Millisecond)
 
-	if activePaneIdx < len(paneTargets) {
-		SelectPane(paneTargets[activePaneIdx])
-	}
+	SelectPane(fmt.Sprintf("%s.%d", target, activePaneIdx))
 
 	return nil
 }

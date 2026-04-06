@@ -94,24 +94,47 @@ Tmux session name (default: `projects`). Using a single session works best with 
 
 ### layout
 
-Configurable pane layout per project window. The topology is fixed as `left | right-top / right-bottom` but commands, sizes, and active pane are configurable:
+Layout is defined as sequential tmux splits. The first entry is the initial pane. Each subsequent entry splits the last created pane:
 
 ```yaml
 layout:
-    panes:
-        - command: claude --continue || claude
-          percent: 40
-          position: left
-        - command: vim .
-          percent: 50
-          position: right-top
-        - command: ""
-          percent: 50
-          position: right-bottom
-          active: true
+    - command: claude --continue || claude
+    - split: horizontal
+      percent: 60
+      command: vim .
+    - split: vertical
+      percent: 50
+      command: ""
+      active: true
 ```
 
-Set `command` to an empty string for an interactive shell. Set `active: true` on the pane that should receive focus.
+- `split`: `horizontal` (side-by-side) or `vertical` (top/bottom)
+- `percent`: size of the new pane
+- `command`: command to run (empty string = shell)
+- `active`: which pane gets focus
+
+This maps directly to how tmux splits work, so any layout is possible — multiple columns, nested splits, etc. See [config.example.yaml](config.example.yaml) for more examples.
+
+### Per-project overrides
+
+Override the layout for specific projects:
+
+```yaml
+projects:
+    s9s-web:
+        layout:
+            - command: claude --continue || claude
+            - split: horizontal
+              percent: 60
+              command: vim .
+            - split: vertical
+              percent: 66
+              command: npm run dev
+            - split: vertical
+              percent: 50
+              command: ""
+              active: true
+```
 
 ## Profiles
 

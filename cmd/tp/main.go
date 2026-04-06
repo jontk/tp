@@ -236,13 +236,15 @@ func closeWindows(cfg *config.Config, closed []projects.Project) {
 
 func createWindows(cfg *config.Config, selected []projects.Project, sessionExists bool) {
 	for i, proj := range selected {
+		layout := cfg.LayoutForProject(proj.Name)
+
 		if i == 0 && !sessionExists {
 			if err := tmux.NewSession(cfg.Session, proj.Name, proj.Path); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to create session: %v\n", err)
 				os.Exit(1)
 			}
 			tmux.SetEnvironment(cfg.Session, "TP_PROFILE", profile)
-			if err := tmux.SetupProjectWindow(cfg.Session, proj.Name, proj.Path, cfg.Layout); err != nil {
+			if err := tmux.SetupProjectWindow(cfg.Session, proj.Name, proj.Path, layout); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", proj.Name, err)
 			}
 			continue
@@ -252,7 +254,7 @@ func createWindows(cfg *config.Config, selected []projects.Project, sessionExist
 			fmt.Fprintf(os.Stderr, "failed to create window %s: %v\n", proj.Name, err)
 			continue
 		}
-		if err := tmux.SetupProjectWindow(cfg.Session, proj.Name, proj.Path, cfg.Layout); err != nil {
+		if err := tmux.SetupProjectWindow(cfg.Session, proj.Name, proj.Path, layout); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", proj.Name, err)
 		}
 	}
