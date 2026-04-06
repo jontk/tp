@@ -18,20 +18,20 @@ type gitInfoMsg struct {
 }
 
 type Model struct {
-	projects       []projects.Project
-	selected       map[int]bool
-	openInTmux     map[string]bool
-	cursor         int
-	filtered       []int
-	filter         textinput.Model
-	sortMode       string
-	quitting       bool
-	confirmed      bool
-	width          int
-	height         int
-	infoCache      map[string]projects.GitInfo
-	infoPending    string // path currently being fetched
-	showPreview    bool
+	projects    []projects.Project
+	selected    map[int]bool
+	openInTmux  map[string]bool
+	cursor      int
+	filtered    []int
+	filter      textinput.Model
+	sortMode    string
+	quitting    bool
+	confirmed   bool
+	width       int
+	height      int
+	infoCache   map[string]projects.GitInfo
+	infoPending string // path currently being fetched
+	showPreview bool
 }
 
 func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string, showPreview bool) Model {
