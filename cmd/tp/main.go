@@ -254,12 +254,35 @@ func runKill() {
 		return
 	}
 
+	// Find another active session to switch to before killing
+	var fallback string
+	if tmux.InsideTmux() {
+		profiles, err := config.ListProfiles()
+		if err == nil {
+			for _, p := range profiles {
+				if p.Session != cfg.Session && tmux.SessionExists(p.Session) {
+					fallback = p.Session
+					break
+				}
+			}
+		}
+
+		if fallback != "" {
+			// Switch first, then kill — otherwise we get detached
+			tmux.SwitchClient(fallback)
+		}
+	}
+
 	if err := tmux.KillSession(cfg.Session); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to kill session %q: %v\n", cfg.Session, err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("killed session %q\n", cfg.Session)
+	if fallback != "" {
+		fmt.Printf("killed session %q, switched to %q\n", cfg.Session, fallback)
+	} else {
+		fmt.Printf("killed session %q\n", cfg.Session)
+	}
 }
 
 func runValidate() {
