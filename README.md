@@ -48,9 +48,12 @@ tp -p work      # Use a named profile (work.yaml)
 | Space / Tab | Toggle selection |
 | Enter | Confirm and launch |
 | Ctrl+A | Select / deselect all visible |
+| Ctrl+S | Toggle sort (recent / alphabetical) |
 | Esc | Cancel |
 
 Projects already open in the session are shown with an `(open)` badge and pre-selected. Deselecting an open project will close its window — it turns red with a `(closing)` indicator before you confirm.
+
+A preview panel on the right shows git info (branch, last commit, status, remote) for the highlighted project. Info is fetched asynchronously so the UI stays responsive.
 
 ### SSH usage
 
@@ -91,6 +94,22 @@ defaults:
 ### session
 
 Tmux session name (default: `projects`). Using a single session works best with iTerm2's tmux integration.
+
+### sort
+
+Default sort order for the picker: `recent` (default) or `alphabetical`. Recent sorts by last git commit, showing your most active projects first. Toggle with Ctrl+S in the picker.
+
+```yaml
+sort: recent
+```
+
+### preview
+
+Show a git info preview panel next to the project list (default: `true`). Auto-hides if the terminal is narrower than 80 columns. Set to `false` to disable:
+
+```yaml
+preview: false
+```
 
 ### layout
 

@@ -12,8 +12,16 @@ type Config struct {
 	Defaults   []string                 `yaml:"defaults"`
 	Session    string                   `yaml:"session"`
 	Sort       string                   `yaml:"sort,omitempty"`
+	Preview    *bool                    `yaml:"preview,omitempty"`
 	Layout     []PaneConfig             `yaml:"layout"`
 	Projects   map[string]ProjectConfig `yaml:"projects,omitempty"`
+}
+
+func (c *Config) ShowPreview() bool {
+	if c.Preview == nil {
+		return true // enabled by default
+	}
+	return *c.Preview
 }
 
 type ProjectConfig struct {

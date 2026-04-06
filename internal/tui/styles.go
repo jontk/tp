@@ -45,4 +45,22 @@ var (
 
 	counterStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF79C6"))
+
+	previewBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#6272A4")).
+				Padding(1, 2)
+
+	previewLabelStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#BD93F9")).
+				Bold(true)
+
+	previewValueStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#F8F8F2"))
+
+	previewCleanStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#50FA7B"))
+
+	previewDirtyStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFB86C"))
 )

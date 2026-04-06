@@ -84,7 +84,7 @@ func runDefault() {
 		defaults = nil
 	}
 
-	selected, closed, confirmed := runPicker(projs, defaults, openWindows, cfg.Sort)
+	selected, closed, confirmed := runPicker(projs, defaults, openWindows, cfg.Sort, cfg.ShowPreview())
 	if !confirmed {
 		return
 	}
@@ -211,8 +211,8 @@ func scanProjects(cfg *config.Config) []projects.Project {
 	return projs
 }
 
-func runPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string) (selected []projects.Project, closed []projects.Project, confirmed bool) {
-	picker := tui.NewPicker(projs, defaults, openWindows, sortMode)
+func runPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string, showPreview bool) (selected []projects.Project, closed []projects.Project, confirmed bool) {
+	picker := tui.NewPicker(projs, defaults, openWindows, sortMode, showPreview)
 	p := tea.NewProgram(picker, tea.WithAltScreen())
 
 	result, err := p.Run()

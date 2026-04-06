@@ -7,25 +7,34 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/jontk/tp/internal/projects"
 )
 
-type Model struct {
-	projects   []projects.Project
-	selected   map[int]bool
-	openInTmux map[string]bool
-	cursor     int
-	filtered   []int
-	filter     textinput.Model
-	sortMode   string
-	quitting   bool
-	confirmed  bool
-	width      int
-	height     int
+type gitInfoMsg struct {
+	path string
+	info projects.GitInfo
 }
 
-func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string) Model {
+type Model struct {
+	projects       []projects.Project
+	selected       map[int]bool
+	openInTmux     map[string]bool
+	cursor         int
+	filtered       []int
+	filter         textinput.Model
+	sortMode       string
+	quitting       bool
+	confirmed      bool
+	width          int
+	height         int
+	infoCache      map[string]projects.GitInfo
+	infoPending    string // path currently being fetched
+	showPreview    bool
+}
+
+func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string, showPreview bool) Model {
 	ti := textinput.New()
 	ti.Placeholder = "type to filter..."
 	ti.Prompt = "/ "
@@ -50,17 +59,19 @@ func NewPicker(projs []projects.Project, defaults []string, openWindows map[stri
 	}
 
 	return Model{
-		projects:   projs,
-		selected:   selected,
-		openInTmux: openWindows,
-		filtered:   filtered,
-		filter:     ti,
-		sortMode:   sortMode,
+		projects:    projs,
+		selected:    selected,
+		openInTmux:  openWindows,
+		filtered:    filtered,
+		filter:      ti,
+		sortMode:    sortMode,
+		showPreview: showPreview,
+		infoCache:   make(map[string]projects.GitInfo),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, m.fetchCurrentInfo())
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -68,6 +79,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		return m, nil
+
+	case gitInfoMsg:
+		m.infoCache[msg.path] = msg.info
+		if m.infoPending == msg.path {
+			m.infoPending = ""
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -91,13 +109,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
-			return m, nil
+			return m, m.fetchCurrentInfo()
 
 		case "down", "j":
 			if m.cursor < len(m.filtered)-1 {
 				m.cursor++
 			}
-			return m, nil
+			return m, m.fetchCurrentInfo()
 
 		case "ctrl+a":
 			allSelected := true
@@ -120,7 +138,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.filtered)-1 {
 				m.cursor++
 			}
-			return m, nil
+			return m, m.fetchCurrentInfo()
 
 		case "ctrl+s":
 			// Track selected by name before re-sorting
@@ -145,16 +163,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.cursor = 0
 			m.applyFilter()
-			return m, nil
+			return m, m.fetchCurrentInfo()
 		}
 	}
 
-	// Update filter input
 	var cmd tea.Cmd
 	m.filter, cmd = m.filter.Update(msg)
 	m.applyFilter()
 
 	return m, cmd
+}
+
+func (m Model) fetchCurrentInfo() tea.Cmd {
+	if !m.showPreview || len(m.filtered) == 0 {
+		return nil
+	}
+	idx := m.filtered[m.cursor]
+	p := m.projects[idx]
+
+	// Already cached
+	if _, ok := m.infoCache[p.Path]; ok {
+		return nil
+	}
+
+	// Already fetching this one
+	if m.infoPending == p.Path {
+		return nil
+	}
+
+	path := p.Path
+	return func() tea.Msg {
+		return gitInfoMsg{
+			path: path,
+			info: projects.FetchGitInfo(path),
+		}
+	}
 }
 
 func (m *Model) applyFilter() {
@@ -177,14 +220,13 @@ func (m Model) View() string {
 		return ""
 	}
 
-	var b strings.Builder
+	// Header
+	var header strings.Builder
+	header.WriteString(titleStyle.Render("tp — tmux project picker"))
+	header.WriteString("\n")
+	header.WriteString(m.filter.View())
+	header.WriteString("\n\n")
 
-	b.WriteString(titleStyle.Render("tp — tmux project picker"))
-	b.WriteString("\n")
-	b.WriteString(m.filter.View())
-	b.WriteString("\n\n")
-
-	// Count selected
 	selectedCount := 0
 	for _, v := range m.selected {
 		if v {
@@ -195,13 +237,21 @@ func (m Model) View() string {
 	if m.sortMode == "alphabetical" {
 		sortLabel = "a-z"
 	}
-	b.WriteString(counterStyle.Render(fmt.Sprintf("%d selected", selectedCount)))
-	b.WriteString("  ")
-	b.WriteString(dirStyle.Render(fmt.Sprintf("[%s]", sortLabel)))
-	b.WriteString("\n\n")
+	header.WriteString(counterStyle.Render(fmt.Sprintf("%d selected", selectedCount)))
+	header.WriteString("  ")
+	header.WriteString(dirStyle.Render(fmt.Sprintf("[%s]", sortLabel)))
+	header.WriteString("\n\n")
 
-	// Calculate visible area
-	maxVisible := m.height - 9 // title + filter + counter + help + margins
+	// Calculate layout
+	showPreview := m.showPreview && m.width >= 80
+	listWidth := m.width
+	previewWidth := 0
+	if showPreview {
+		listWidth = m.width / 2
+		previewWidth = m.width - listWidth - 3
+	}
+
+	maxVisible := m.height - 9
 	if maxVisible < 5 {
 		maxVisible = 20
 	}
@@ -217,17 +267,17 @@ func (m Model) View() string {
 		visibleEnd = len(m.filtered)
 	}
 
+	// Build project list
+	var list strings.Builder
 	for vi := scrollOffset; vi < visibleEnd; vi++ {
 		idx := m.filtered[vi]
 		p := m.projects[idx]
 
-		// Cursor
 		cursor := "  "
 		if vi == m.cursor {
 			cursor = cursorStyle.Render("> ")
 		}
 
-		// Checkbox and name
 		var line string
 		isOpen := m.openInTmux[p.Name]
 		isSelected := m.selected[idx]
@@ -245,24 +295,101 @@ func (m Model) View() string {
 			line = unselectedStyle.Render(fmt.Sprintf("[ ] %s", p.Name))
 		}
 
-		// Show relative time and parent dir
 		var meta []string
 		if rt := projects.RelativeTime(p.LastCommit); rt != "" {
 			meta = append(meta, rt)
 		}
 		meta = append(meta, filepath.Base(p.Dir))
 
-		b.WriteString(fmt.Sprintf("%s%s  %s\n", cursor, line, dirStyle.Render(strings.Join(meta, " · "))))
+		list.WriteString(fmt.Sprintf("%s%s  %s\n", cursor, line, dirStyle.Render(strings.Join(meta, " · "))))
 	}
 
 	if len(m.filtered) == 0 {
-		b.WriteString(openStyle.Render("  no matches\n"))
+		list.WriteString(openStyle.Render("  no matches\n"))
+	}
+
+	// Build preview panel
+	listStr := list.String()
+	if showPreview && previewWidth > 20 && len(m.filtered) > 0 {
+		preview := m.renderPreview(previewWidth)
+		listStr = lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.NewStyle().Width(listWidth).Render(listStr),
+			preview,
+		)
 	}
 
 	help := "space/tab: toggle • enter: confirm • ctrl+a: all • ctrl+s: sort • esc: cancel"
-	b.WriteString(helpStyle.Render(help))
 
-	return b.String()
+	return header.String() + listStr + "\n" + helpStyle.Render(help)
+}
+
+func (m Model) renderPreview(width int) string {
+	if len(m.filtered) == 0 {
+		return ""
+	}
+
+	idx := m.filtered[m.cursor]
+	p := m.projects[idx]
+
+	info, ok := m.infoCache[p.Path]
+	if !ok {
+		return previewBorderStyle.Width(width).Render(
+			previewLabelStyle.Render(p.Name) + "\n\n" +
+				dirStyle.Render("loading..."),
+		)
+	}
+
+	var b strings.Builder
+
+	b.WriteString(previewLabelStyle.Render(p.Name))
+	b.WriteString("\n\n")
+
+	if info.Branch != "" {
+		b.WriteString(previewLabelStyle.Render("branch  "))
+		b.WriteString(previewValueStyle.Render(info.Branch))
+		b.WriteString("\n")
+	}
+
+	if info.CommitMsg != "" {
+		b.WriteString(previewLabelStyle.Render("commit  "))
+		msg := info.CommitMsg
+		maxMsg := width - 12
+		if maxMsg > 0 && len(msg) > maxMsg {
+			msg = msg[:maxMsg-3] + "..."
+		}
+		b.WriteString(previewValueStyle.Render(info.CommitHash + " " + msg))
+		b.WriteString("\n")
+	}
+
+	if info.Author != "" {
+		b.WriteString(previewLabelStyle.Render("author  "))
+		b.WriteString(previewValueStyle.Render(info.Author))
+		b.WriteString("\n")
+	}
+
+	if info.Status != "" {
+		b.WriteString(previewLabelStyle.Render("status  "))
+		if info.Status == "clean" {
+			b.WriteString(previewCleanStyle.Render(info.Status))
+		} else {
+			b.WriteString(previewDirtyStyle.Render(info.Status))
+		}
+		b.WriteString("\n")
+	}
+
+	if info.RemoteURL != "" {
+		b.WriteString(previewLabelStyle.Render("remote  "))
+		b.WriteString(previewValueStyle.Render(info.RemoteURL))
+		b.WriteString("\n")
+	}
+
+	if rt := projects.RelativeTime(p.LastCommit); rt != "" {
+		b.WriteString(previewLabelStyle.Render("active  "))
+		b.WriteString(dirStyle.Render(rt))
+		b.WriteString("\n")
+	}
+
+	return previewBorderStyle.Width(width).Render(b.String())
 }
 
 func (m Model) Selected() []projects.Project {
