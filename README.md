@@ -33,12 +33,15 @@ go build -o tp ./cmd/tp
 ```bash
 tp              # Open picker — creates session or manages existing one
 tp list         # List current session windows
+tp kill         # Kill the current session (switches to another if available)
+tp switch       # Switch between profile sessions
+tp validate     # Validate config file
 tp config       # Open config in $EDITOR
 tp --cc         # Force iTerm2 control mode on attach
 tp -p work      # Use a named profile (work.yaml)
 ```
 
-`tp` is context-aware: if no session exists it creates one with defaults pre-selected. If a session already exists, it opens the picker showing what's open so you can add or remove windows.
+`tp` is context-aware: if no session exists it creates one with your last selections pre-selected (falling back to defaults on first run). If a session already exists, it opens the picker showing what's open so you can add or remove windows. Selections are saved automatically per profile.
 
 ### Picker controls
 
