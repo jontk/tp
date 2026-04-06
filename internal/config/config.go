@@ -10,14 +10,14 @@ import (
 )
 
 type Config struct {
-	SourceDirs    []string                    `yaml:"source_dirs"`
-	Defaults      []string                    `yaml:"defaults"`
-	Session       string                      `yaml:"session"`
-	Sort          string                      `yaml:"sort,omitempty"`
-	Preview       *bool                       `yaml:"preview,omitempty"`
-	Layout        []PaneConfig                `yaml:"layout"`
-	LayoutPresets map[string][]PaneConfig      `yaml:"layout_presets,omitempty"`
-	Projects      map[string]ProjectConfig    `yaml:"projects,omitempty"`
+	SourceDirs    []string                 `yaml:"source_dirs"`
+	Defaults      []string                 `yaml:"defaults"`
+	Session       string                   `yaml:"session"`
+	Sort          string                   `yaml:"sort,omitempty"`
+	Preview       *bool                    `yaml:"preview,omitempty"`
+	Layout        []PaneConfig             `yaml:"layout"`
+	LayoutPresets map[string][]PaneConfig  `yaml:"layout_presets,omitempty"`
+	Projects      map[string]ProjectConfig `yaml:"projects,omitempty"`
 }
 
 func (c *Config) ShowPreview() bool {
