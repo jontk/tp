@@ -36,10 +36,8 @@ func main() {
 	}
 
 	switch cmd {
-	case "":
+	case "", "add":
 		runDefault()
-	case "add":
-		runAdd()
 	case "list":
 		runList()
 	case "config":
@@ -80,7 +78,13 @@ func runDefault() {
 		}
 	}
 
-	selected, closed, confirmed := runPicker(projs, cfg.Defaults, openWindows)
+	// Only pre-select defaults when creating a new session
+	defaults := cfg.Defaults
+	if sessionExists {
+		defaults = nil
+	}
+
+	selected, closed, confirmed := runPicker(projs, defaults, openWindows)
 	if !confirmed {
 		return
 	}
@@ -105,40 +109,6 @@ func runDefault() {
 			fmt.Fprintf(os.Stderr, "failed to attach: %v\n", err)
 			os.Exit(1)
 		}
-	}
-}
-
-func runAdd() {
-	cfg := loadConfig()
-
-	if !tmux.SessionExists(cfg.Session) {
-		fmt.Fprintf(os.Stderr, "session %q does not exist, use 'tp' to create it\n", cfg.Session)
-		os.Exit(1)
-	}
-
-	projs := scanProjects(cfg)
-
-	openWindows := make(map[string]bool)
-	windows, err := tmux.ListWindows(cfg.Session)
-	if err == nil {
-		for _, w := range windows {
-			openWindows[w] = true
-		}
-	}
-
-	selected, closed, confirmed := runPicker(projs, nil, openWindows)
-	if !confirmed {
-		return
-	}
-
-	closeWindows(cfg, closed)
-
-	if len(selected) > 0 {
-		createWindows(cfg, selected, true)
-	}
-
-	if len(selected) > 0 || len(closed) > 0 {
-		fmt.Printf("added %d, closed %d window(s)\n", len(selected), len(closed))
 	}
 }
 
@@ -193,8 +163,7 @@ func printHelp() {
 	fmt.Print(`tp — tmux project manager
 
 Usage:
-  tp              Open project picker, create session, and attach
-  tp add          Add project windows to existing session
+  tp              Open picker — creates session or manages existing one
   tp list         List current session windows
   tp config       Open config in $EDITOR
   tp help         Show this help

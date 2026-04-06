@@ -31,13 +31,14 @@ go build -o tp ./cmd/tp
 ## Usage
 
 ```bash
-tp              # Open picker, create session, attach
-tp add          # Add/remove project windows in existing session
+tp              # Open picker — creates session or manages existing one
 tp list         # List current session windows
 tp config       # Open config in $EDITOR
 tp --cc         # Force iTerm2 control mode on attach
 tp -p work      # Use a named profile (work.yaml)
 ```
+
+`tp` is context-aware: if no session exists it creates one with defaults pre-selected. If a session already exists, it opens the picker showing what's open so you can add or remove windows.
 
 ### Picker controls
 
@@ -125,8 +126,7 @@ Profiles let you maintain separate configurations for different contexts (e.g. p
 Each profile has its own session name, source directories, defaults, and layout. Use `-p` with any command:
 
 ```bash
-tp -p work              # Launch work profile
-tp -p work add          # Add windows to work session
+tp -p work              # Launch or manage work profile
 tp -p work config       # Edit work config
 ```
 
@@ -145,7 +145,7 @@ Add a keybinding to open the picker from within an active tmux session. Add this
 
 ```tmux
 # prefix + A opens the tp project picker in a popup
-bind A display-popup -E -w 80% -h 80% "~/go/bin/tp add"
+bind A display-popup -E -w 80% -h 80% "~/go/bin/tp"
 ```
 
 This opens `tp add` in a centered popup overlay. The `-E` flag closes the popup automatically when you're done selecting.
