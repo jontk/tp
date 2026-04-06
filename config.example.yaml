@@ -6,13 +6,13 @@
 # Directories to scan for projects.
 # Each subdirectory within these paths becomes a selectable project.
 source_dirs:
-    - /mnt/export/jontk/src/github.com/jontk
-    - /mnt/export/jontk/src/github.com/brokkr
+    - ~/src/github.com/myuser
+    - ~/src/github.com/myorg
 
 # Projects pre-selected in the picker on launch.
 defaults:
-    - nixconf
-    - s9s
+    - my-api
+    - my-webapp
 
 # Tmux session name.
 session: projects
@@ -50,7 +50,7 @@ layout:
 # Per-project layout overrides.
 # Any project listed here uses its own layout instead of the global one.
 #
-# Example: s9s-web with a dev server pane
+# Example: frontend project with a dev server pane
 #
 #   ┌──────────────┬──────────────┐
 #   │              │   vim .      │
@@ -61,7 +61,7 @@ layout:
 #   └──────────────┴──────────────┘
 #
 # projects:
-#     s9s-web:
+#     my-webapp:
 #         layout:
 #             - command: claude --continue || claude
 #             - split: horizontal
@@ -75,12 +75,32 @@ layout:
 #               command: ""
 #               active: true
 #
+# Example: infrastructure project with top-down layout
+#
+#   ┌─────────────────────┐
+#   │       claude        │
+#   ├──────────┬──────────┤
+#   │   vim    │  shell   │
+#   └──────────┴──────────┘
+#
+# projects:
+#     infra:
+#         layout:
+#             - command: claude --continue || claude
+#             - split: vertical
+#               percent: 60
+#               command: vim .
+#             - split: horizontal
+#               percent: 50
+#               command: ""
+#               active: true
+#
 # Example: wide-screen 3-column layout
 #
 #   ┌──────────┬──────────┬──────────┐
-#   │          │          │  shells  │
+#   │          │          │  shell   │
 #   │  claude  │   vim    ├──────────┤
-#   │          │          │  shells  │
+#   │          │          │  shell   │
 #   └──────────┴──────────┴──────────┘
 #
 # projects:

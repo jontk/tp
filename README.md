@@ -117,11 +117,20 @@ This maps directly to how tmux splits work, so any layout is possible — multip
 
 ### Per-project overrides
 
-Override the layout for specific projects:
+Override the layout for specific projects using the `projects` key:
+
+**Frontend project** — add a dev server pane:
 
 ```yaml
+# ┌──────────┬──────────┐
+# │          │   vim    │
+# │  claude  ├──────────┤
+# │          │ dev srv  │
+# │          ├──────────┤
+# │          │  shell   │
+# └──────────┴──────────┘
 projects:
-    s9s-web:
+    my-webapp:
         layout:
             - command: claude --continue || claude
             - split: horizontal
@@ -136,6 +145,77 @@ projects:
               active: true
 ```
 
+**Go backend** — tests watching alongside:
+
+```yaml
+# ┌──────────┬──────────┐
+# │          │   vim    │
+# │  claude  ├──────────┤
+# │          │ go test  │
+# │          ├──────────┤
+# │          │  shell   │
+# └──────────┴──────────┘
+projects:
+    my-api:
+        layout:
+            - command: claude --continue || claude
+            - split: horizontal
+              percent: 60
+              command: vim .
+            - split: vertical
+              percent: 66
+              command: watchexec -e go -- go test ./...
+            - split: vertical
+              percent: 50
+              command: ""
+              active: true
+```
+
+**Infrastructure project** — top-down layout with logs:
+
+```yaml
+# ┌─────────────────────┐
+# │       claude        │
+# ├──────────┬──────────┤
+# │   vim    │  shell   │
+# └──────────┴──────────┘
+projects:
+    infra:
+        layout:
+            - command: claude --continue || claude
+            - split: vertical
+              percent: 60
+              command: vim .
+            - split: horizontal
+              percent: 50
+              command: ""
+              active: true
+```
+
+**Wide-screen 3-column** — for large monitors:
+
+```yaml
+# ┌──────────┬──────────┬──────────┐
+# │          │          │  shell   │
+# │  claude  │   vim    ├──────────┤
+# │          │          │  shell   │
+# └──────────┴──────────┴──────────┘
+projects:
+    big-project:
+        layout:
+            - command: claude --continue || claude
+            - split: horizontal
+              percent: 66
+              command: vim .
+            - split: horizontal
+              percent: 50
+              command: ""
+            - split: vertical
+              percent: 50
+              command: ""
+              active: true
+```
+
 ## Profiles
 
 Profiles let you maintain separate configurations for different contexts (e.g. personal, work, a specific project). Each profile is a separate YAML file in the config directory:
@@ -143,7 +223,7 @@ Profiles let you maintain separate configurations for different contexts (e.g. p
 ```
 ~/.config/tmux-projects/config.yaml     # default (tp)
 ~/.config/tmux-projects/work.yaml       # tp -p work
-~/.config/tmux-projects/brokkr.yaml     # tp -p brokkr
+~/.config/tmux-projects/ops.yaml        # tp -p ops
 ```
 
 Each profile has its own session name, source directories, defaults, and layout. Use `-p` with any command:
@@ -158,7 +238,7 @@ tp -p work config       # Edit work config
 When you run `tp` inside a tmux session that was created by a profile, it automatically detects the profile — no need to pass `-p`. This means:
 
 - The tmux keybinding (`prefix + A`) works correctly regardless of which profile's session you're in
-- Running `tp list` or `tp add` from a shell pane uses the right config automatically
+- Running `tp list` from a shell pane uses the right config automatically
 
 This works by storing the profile name as a tmux session environment variable (`TP_PROFILE`) when the session is created.
 
@@ -171,7 +251,7 @@ Add a keybinding to open the picker from within an active tmux session. Add this
 bind A display-popup -E -w 80% -h 80% "~/go/bin/tp"
 ```
 
-This opens `tp add` in a centered popup overlay. The `-E` flag closes the popup automatically when you're done selecting.
+This opens `tp` in a centered popup overlay. The `-E` flag closes the popup automatically when you're done selecting.
 
 Use the full path to the binary since tmux popups don't load your shell profile. The keybinding is automatically context-aware — it detects which profile the current session belongs to.
 
