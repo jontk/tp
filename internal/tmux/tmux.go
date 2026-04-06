@@ -70,6 +70,21 @@ func KillWindow(target string) error {
 	return run("kill-window", "-t", target)
 }
 
+func WindowIndex(session, name string) (string, error) {
+	cmd := exec.Command("tmux", "list-windows", "-t", session, "-F", "#{window_index}:#{window_name}")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) == 2 && parts[1] == name {
+			return parts[0], nil
+		}
+	}
+	return "", fmt.Errorf("window %q not found", name)
+}
+
 func ListWindows(session string) ([]string, error) {
 	cmd := exec.Command("tmux", "list-windows", "-t", session, "-F", "#{window_name}")
 	out, err := cmd.Output()
@@ -110,7 +125,13 @@ func IsITerm() bool {
 }
 
 func SetupProjectWindow(session, name, dir string, layout []config.PaneConfig) error {
-	target := fmt.Sprintf("%s:%s", session, name)
+	// Look up window by index to avoid tmux interpreting dots in window
+	// names as pane delimiters (e.g. "jontk.com")
+	idx, err := WindowIndex(session, name)
+	if err != nil {
+		return fmt.Errorf("find window %s: %w", name, err)
+	}
+	target := fmt.Sprintf("%s:%s", session, idx)
 
 	SetWindowOption(target, "automatic-rename", "off")
 

@@ -227,7 +227,12 @@ func runPicker(projs []projects.Project, defaults []string, openWindows map[stri
 
 func closeWindows(cfg *config.Config, closed []projects.Project) {
 	for _, proj := range closed {
-		target := fmt.Sprintf("%s:%s", cfg.Session, proj.Name)
+		idx, err := tmux.WindowIndex(cfg.Session, proj.Name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to find window %s: %v\n", proj.Name, err)
+			continue
+		}
+		target := fmt.Sprintf("%s:%s", cfg.Session, idx)
 		if err := tmux.KillWindow(target); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to close window %s: %v\n", proj.Name, err)
 		}
@@ -261,6 +266,8 @@ func createWindows(cfg *config.Config, selected []projects.Project, sessionExist
 
 	// Select first window
 	if !sessionExists && len(selected) > 0 {
-		tmux.SelectWindow(fmt.Sprintf("%s:%s", cfg.Session, selected[0].Name))
+		if idx, err := tmux.WindowIndex(cfg.Session, selected[0].Name); err == nil {
+			tmux.SelectWindow(fmt.Sprintf("%s:%s", cfg.Session, idx))
+		}
 	}
 }
