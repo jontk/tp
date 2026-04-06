@@ -18,13 +18,14 @@ type Model struct {
 	cursor     int
 	filtered   []int
 	filter     textinput.Model
+	sortMode   string
 	quitting   bool
 	confirmed  bool
 	width      int
 	height     int
 }
 
-func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool) Model {
+func NewPicker(projs []projects.Project, defaults []string, openWindows map[string]bool, sortMode string) Model {
 	ti := textinput.New()
 	ti.Placeholder = "type to filter..."
 	ti.Prompt = "/ "
@@ -54,6 +55,7 @@ func NewPicker(projs []projects.Project, defaults []string, openWindows map[stri
 		openInTmux: openWindows,
 		filtered:   filtered,
 		filter:     ti,
+		sortMode:   sortMode,
 	}
 }
 
@@ -119,6 +121,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 			return m, nil
+
+		case "ctrl+s":
+			// Track selected by name before re-sorting
+			selectedNames := make(map[string]bool)
+			for idx, sel := range m.selected {
+				if sel {
+					selectedNames[m.projects[idx].Name] = true
+				}
+			}
+			if m.sortMode == "recent" {
+				m.sortMode = "alphabetical"
+			} else {
+				m.sortMode = "recent"
+			}
+			projects.SortProjects(m.projects, m.sortMode)
+			// Rebuild selected map with new indices
+			m.selected = make(map[int]bool)
+			for i, p := range m.projects {
+				if selectedNames[p.Name] {
+					m.selected[i] = true
+				}
+			}
+			m.cursor = 0
+			m.applyFilter()
+			return m, nil
 		}
 	}
 
@@ -164,7 +191,13 @@ func (m Model) View() string {
 			selectedCount++
 		}
 	}
+	sortLabel := "recent"
+	if m.sortMode == "alphabetical" {
+		sortLabel = "a-z"
+	}
 	b.WriteString(counterStyle.Render(fmt.Sprintf("%d selected", selectedCount)))
+	b.WriteString("  ")
+	b.WriteString(dirStyle.Render(fmt.Sprintf("[%s]", sortLabel)))
 	b.WriteString("\n\n")
 
 	// Calculate visible area
@@ -212,17 +245,21 @@ func (m Model) View() string {
 			line = unselectedStyle.Render(fmt.Sprintf("[ ] %s", p.Name))
 		}
 
-		// Show parent dir basename for disambiguation
-		dir := dirStyle.Render(filepath.Base(p.Dir))
+		// Show relative time and parent dir
+		var meta []string
+		if rt := projects.RelativeTime(p.LastCommit); rt != "" {
+			meta = append(meta, rt)
+		}
+		meta = append(meta, filepath.Base(p.Dir))
 
-		b.WriteString(fmt.Sprintf("%s%s  %s\n", cursor, line, dir))
+		b.WriteString(fmt.Sprintf("%s%s  %s\n", cursor, line, dirStyle.Render(strings.Join(meta, " · "))))
 	}
 
 	if len(m.filtered) == 0 {
 		b.WriteString(openStyle.Render("  no matches\n"))
 	}
 
-	help := "space/tab: toggle • enter: confirm • ctrl+a: all • esc: cancel"
+	help := "space/tab: toggle • enter: confirm • ctrl+a: all • ctrl+s: sort • esc: cancel"
 	b.WriteString(helpStyle.Render(help))
 
 	return b.String()

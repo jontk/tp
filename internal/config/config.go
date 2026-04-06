@@ -11,6 +11,7 @@ type Config struct {
 	SourceDirs []string                 `yaml:"source_dirs"`
 	Defaults   []string                 `yaml:"defaults"`
 	Session    string                   `yaml:"session"`
+	Sort       string                   `yaml:"sort,omitempty"`
 	Layout     []PaneConfig             `yaml:"layout"`
 	Projects   map[string]ProjectConfig `yaml:"projects,omitempty"`
 }
@@ -88,6 +89,9 @@ func Load(path string) (*Config, error) {
 
 	if cfg.Session == "" {
 		cfg.Session = "projects"
+	}
+	if cfg.Sort == "" {
+		cfg.Sort = "recent"
 	}
 	if len(cfg.Layout) == 0 {
 		cfg.Layout = DefaultLayout()
