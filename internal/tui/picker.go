@@ -48,7 +48,12 @@ func NewPicker(projs []projects.Project, defaults []string, openWindows map[stri
 	}
 
 	for i, p := range projs {
-		if openWindows[p.Name] || (defaultSet[p.Name] && !openWindows[p.Name]) {
+		wname := p.WindowName()
+		if openWindows[wname] || (defaultSet[wname] && !openWindows[wname]) {
+			selected[i] = true
+		}
+		// Also match defaults by plain name for backwards compatibility
+		if !selected[i] && defaultSet[p.Name] && !openWindows[wname] {
 			selected[i] = true
 		}
 	}
@@ -141,11 +146,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.fetchCurrentInfo()
 
 		case "ctrl+s":
-			// Track selected by name before re-sorting
-			selectedNames := make(map[string]bool)
+			// Track selected by path before re-sorting (path is unique)
+			selectedPaths := make(map[string]bool)
 			for idx, sel := range m.selected {
 				if sel {
-					selectedNames[m.projects[idx].Name] = true
+					selectedPaths[m.projects[idx].Path] = true
 				}
 			}
 			if m.sortMode == "recent" {
@@ -157,7 +162,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Rebuild selected map with new indices
 			m.selected = make(map[int]bool)
 			for i, p := range m.projects {
-				if selectedNames[p.Name] {
+				if selectedPaths[p.Path] {
 					m.selected[i] = true
 				}
 			}
@@ -279,7 +284,7 @@ func (m Model) View() string {
 		}
 
 		var line string
-		isOpen := m.openInTmux[p.Name]
+		isOpen := m.openInTmux[p.WindowName()]
 		isSelected := m.selected[idx]
 
 		switch {
@@ -299,9 +304,15 @@ func (m Model) View() string {
 		if rt := projects.RelativeTime(p.LastCommit); rt != "" {
 			meta = append(meta, rt)
 		}
-		meta = append(meta, filepath.Base(p.Dir))
+		if p.HasDuplicate {
+			meta = append(meta, filepath.Base(p.Dir))
+		}
 
-		list.WriteString(fmt.Sprintf("%s%s  %s\n", cursor, line, dirStyle.Render(strings.Join(meta, " · "))))
+		suffix := ""
+		if len(meta) > 0 {
+			suffix = "  " + dirStyle.Render(strings.Join(meta, " · "))
+		}
+		list.WriteString(fmt.Sprintf("%s%s%s\n", cursor, line, suffix))
 	}
 
 	if len(m.filtered) == 0 {
@@ -395,7 +406,7 @@ func (m Model) renderPreview(width int) string {
 func (m Model) Selected() []projects.Project {
 	var result []projects.Project
 	for idx, sel := range m.selected {
-		if sel && !m.openInTmux[m.projects[idx].Name] {
+		if sel && !m.openInTmux[m.projects[idx].WindowName()] {
 			result = append(result, m.projects[idx])
 		}
 	}
@@ -405,7 +416,7 @@ func (m Model) Selected() []projects.Project {
 func (m Model) Closed() []projects.Project {
 	var result []projects.Project
 	for idx, p := range m.projects {
-		if m.openInTmux[p.Name] && !m.selected[idx] {
+		if m.openInTmux[p.WindowName()] && !m.selected[idx] {
 			result = append(result, p)
 		}
 	}

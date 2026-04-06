@@ -12,15 +12,24 @@ import (
 )
 
 type Project struct {
-	Name       string
-	Path       string
-	Dir        string // parent source directory
-	LastCommit time.Time
+	Name         string
+	Path         string
+	Dir          string // parent source directory
+	LastCommit   time.Time
+	HasDuplicate bool // true if another project has the same name
+}
+
+// WindowName returns the tmux window name. For duplicates, includes
+// the parent dir to disambiguate (e.g. "brokkr/jontk").
+func (p Project) WindowName() string {
+	if p.HasDuplicate {
+		return filepath.Base(p.Dir) + "/" + p.Name
+	}
+	return p.Name
 }
 
 func Scan(dirs []string, sortMode string) ([]Project, error) {
 	var projects []Project
-	seen := make(map[string]bool)
 
 	for _, dir := range dirs {
 		entries, err := os.ReadDir(dir)
@@ -36,15 +45,9 @@ func Scan(dirs []string, sortMode string) ([]Project, error) {
 				continue
 			}
 
-			name := entry.Name()
-			if seen[name] {
-				continue
-			}
-			seen[name] = true
-
 			p := Project{
-				Name: name,
-				Path: filepath.Join(dir, name),
+				Name: entry.Name(),
+				Path: filepath.Join(dir, entry.Name()),
 				Dir:  dir,
 			}
 
@@ -53,6 +56,17 @@ func Scan(dirs []string, sortMode string) ([]Project, error) {
 			}
 
 			projects = append(projects, p)
+		}
+	}
+
+	// Mark projects that share a name across different source dirs
+	nameCounts := make(map[string]int)
+	for _, p := range projects {
+		nameCounts[p.Name]++
+	}
+	for i := range projects {
+		if nameCounts[projects[i].Name] > 1 {
+			projects[i].HasDuplicate = true
 		}
 	}
 

@@ -108,11 +108,11 @@ func runDefault() {
 		allOpen = append(allOpen, w)
 	}
 	for _, p := range selected {
-		allOpen = append(allOpen, p.Name)
+		allOpen = append(allOpen, p.WindowName())
 	}
 	closedNames := make(map[string]bool)
 	for _, p := range closed {
-		closedNames[p.Name] = true
+		closedNames[p.WindowName()] = true
 	}
 	var finalSelection []string
 	for _, name := range allOpen {
@@ -406,14 +406,15 @@ func runPicker(projs []projects.Project, defaults []string, openWindows map[stri
 
 func closeWindows(cfg *config.Config, closed []projects.Project) {
 	for _, proj := range closed {
-		idx, err := tmux.WindowIndex(cfg.Session, proj.Name)
+		wname := proj.WindowName()
+		idx, err := tmux.WindowIndex(cfg.Session, wname)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to find window %s: %v\n", proj.Name, err)
+			fmt.Fprintf(os.Stderr, "failed to find window %s: %v\n", wname, err)
 			continue
 		}
 		target := fmt.Sprintf("%s:%s", cfg.Session, idx)
 		if err := tmux.KillWindow(target); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to close window %s: %v\n", proj.Name, err)
+			fmt.Fprintf(os.Stderr, "failed to close window %s: %v\n", wname, err)
 		}
 	}
 }
@@ -421,31 +422,32 @@ func closeWindows(cfg *config.Config, closed []projects.Project) {
 func createWindows(cfg *config.Config, selected []projects.Project, sessionExists bool) {
 	for i, proj := range selected {
 		layout := cfg.LayoutForProject(proj.Name)
+		wname := proj.WindowName()
 
 		if i == 0 && !sessionExists {
-			if err := tmux.NewSession(cfg.Session, proj.Name, proj.Path); err != nil {
+			if err := tmux.NewSession(cfg.Session, wname, proj.Path); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to create session: %v\n", err)
 				os.Exit(1)
 			}
 			tmux.SetEnvironment(cfg.Session, "TP_PROFILE", profile)
-			if err := tmux.SetupProjectWindow(cfg.Session, proj.Name, proj.Path, layout); err != nil {
-				fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", proj.Name, err)
+			if err := tmux.SetupProjectWindow(cfg.Session, wname, proj.Path, layout); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", wname, err)
 			}
 			continue
 		}
 
-		if err := tmux.NewWindow(cfg.Session, proj.Name, proj.Path); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to create window %s: %v\n", proj.Name, err)
+		if err := tmux.NewWindow(cfg.Session, wname, proj.Path); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to create window %s: %v\n", wname, err)
 			continue
 		}
-		if err := tmux.SetupProjectWindow(cfg.Session, proj.Name, proj.Path, layout); err != nil {
-			fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", proj.Name, err)
+		if err := tmux.SetupProjectWindow(cfg.Session, wname, proj.Path, layout); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", wname, err)
 		}
 	}
 
 	// Select first window
 	if !sessionExists && len(selected) > 0 {
-		if idx, err := tmux.WindowIndex(cfg.Session, selected[0].Name); err == nil {
+		if idx, err := tmux.WindowIndex(cfg.Session, selected[0].WindowName()); err == nil {
 			tmux.SelectWindow(fmt.Sprintf("%s:%s", cfg.Session, idx))
 		}
 	}
