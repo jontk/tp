@@ -40,6 +40,10 @@ func main() {
 		runDefault()
 	case "list":
 		runList()
+	case "kill":
+		runKill()
+	case "validate":
+		runValidate()
 	case "config":
 		runConfig()
 	case "help":
@@ -131,6 +135,44 @@ func runList() {
 	}
 }
 
+func runKill() {
+	cfg := loadConfig()
+
+	if !tmux.SessionExists(cfg.Session) {
+		fmt.Printf("session %q does not exist\n", cfg.Session)
+		return
+	}
+
+	if err := tmux.KillSession(cfg.Session); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to kill session %q: %v\n", cfg.Session, err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("killed session %q\n", cfg.Session)
+}
+
+func runValidate() {
+	path := configPath()
+
+	cfg, err := config.Load(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	errors := config.Validate(cfg)
+	if len(errors) == 0 {
+		fmt.Printf("%s: valid\n", path)
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "%s: %d issue(s)\n", path, len(errors))
+	for _, e := range errors {
+		fmt.Fprintf(os.Stderr, "  - %s\n", e)
+	}
+	os.Exit(1)
+}
+
 func runConfig() {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -165,6 +207,8 @@ func printHelp() {
 Usage:
   tp              Open picker — creates session or manages existing one
   tp list         List current session windows
+  tp kill         Kill the current session
+  tp validate     Validate config file
   tp config       Open config in $EDITOR
   tp help         Show this help
 

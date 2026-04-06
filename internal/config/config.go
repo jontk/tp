@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -130,4 +131,54 @@ func WriteDefault(path string) error {
 		"#   active: which pane gets focus\n\n"
 
 	return os.WriteFile(path, []byte(header+string(data)), 0644)
+}
+
+func Validate(cfg *Config) []string {
+	var errs []string
+
+	if len(cfg.SourceDirs) == 0 {
+		errs = append(errs, "source_dirs is empty")
+	}
+	for _, dir := range cfg.SourceDirs {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			errs = append(errs, fmt.Sprintf("source_dirs: %q does not exist", dir))
+		}
+	}
+
+	if cfg.Session == "" {
+		errs = append(errs, "session name is empty")
+	}
+
+	if cfg.Sort != "" && cfg.Sort != "recent" && cfg.Sort != "alphabetical" {
+		errs = append(errs, fmt.Sprintf("sort: %q is not valid (use 'recent' or 'alphabetical')", cfg.Sort))
+	}
+
+	if len(cfg.Layout) == 0 {
+		errs = append(errs, "layout is empty")
+	}
+	for i, pane := range cfg.Layout {
+		if i > 0 && pane.Split == "" {
+			errs = append(errs, fmt.Sprintf("layout[%d]: missing 'split' (horizontal or vertical)", i))
+		}
+		if i > 0 && pane.Split != "horizontal" && pane.Split != "vertical" {
+			errs = append(errs, fmt.Sprintf("layout[%d]: split %q is not valid (use 'horizontal' or 'vertical')", i, pane.Split))
+		}
+		if pane.Percent < 0 || pane.Percent > 100 {
+			errs = append(errs, fmt.Sprintf("layout[%d]: percent %d is out of range (0-100)", i, pane.Percent))
+		}
+	}
+
+	for name, proj := range cfg.Projects {
+		if len(proj.Layout) == 0 {
+			errs = append(errs, fmt.Sprintf("projects.%s: layout is empty", name))
+			continue
+		}
+		for i, pane := range proj.Layout {
+			if i > 0 && pane.Split != "horizontal" && pane.Split != "vertical" {
+				errs = append(errs, fmt.Sprintf("projects.%s.layout[%d]: split %q is not valid", name, i, pane.Split))
+			}
+		}
+	}
+
+	return errs
 }
