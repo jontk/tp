@@ -10,13 +10,14 @@ import (
 )
 
 type Config struct {
-	SourceDirs []string                 `yaml:"source_dirs"`
-	Defaults   []string                 `yaml:"defaults"`
-	Session    string                   `yaml:"session"`
-	Sort       string                   `yaml:"sort,omitempty"`
-	Preview    *bool                    `yaml:"preview,omitempty"`
-	Layout     []PaneConfig             `yaml:"layout"`
-	Projects   map[string]ProjectConfig `yaml:"projects,omitempty"`
+	SourceDirs    []string                    `yaml:"source_dirs"`
+	Defaults      []string                    `yaml:"defaults"`
+	Session       string                      `yaml:"session"`
+	Sort          string                      `yaml:"sort,omitempty"`
+	Preview       *bool                       `yaml:"preview,omitempty"`
+	Layout        []PaneConfig                `yaml:"layout"`
+	LayoutPresets map[string][]PaneConfig      `yaml:"layout_presets,omitempty"`
+	Projects      map[string]ProjectConfig    `yaml:"projects,omitempty"`
 }
 
 func (c *Config) ShowPreview() bool {
@@ -27,7 +28,8 @@ func (c *Config) ShowPreview() bool {
 }
 
 type ProjectConfig struct {
-	Layout []PaneConfig `yaml:"layout"`
+	Preset string       `yaml:"preset,omitempty"`
+	Layout []PaneConfig `yaml:"layout,omitempty"`
 }
 
 type PaneConfig struct {
@@ -124,8 +126,17 @@ func DefaultConfig() *Config {
 }
 
 func (c *Config) LayoutForProject(name string) []PaneConfig {
-	if p, ok := c.Projects[name]; ok && len(p.Layout) > 0 {
-		return p.Layout
+	if p, ok := c.Projects[name]; ok {
+		// Inline layout takes priority
+		if len(p.Layout) > 0 {
+			return p.Layout
+		}
+		// Then try preset
+		if p.Preset != "" {
+			if preset, ok := c.LayoutPresets[p.Preset]; ok {
+				return preset
+			}
+		}
 	}
 	return c.Layout
 }
@@ -220,10 +231,28 @@ func Validate(cfg *Config) []string {
 		}
 	}
 
-	for name, proj := range cfg.Projects {
-		if len(proj.Layout) == 0 {
-			errs = append(errs, fmt.Sprintf("projects.%s: layout is empty", name))
+	// Validate layout presets
+	for name, preset := range cfg.LayoutPresets {
+		if len(preset) == 0 {
+			errs = append(errs, fmt.Sprintf("layout_presets.%s: layout is empty", name))
 			continue
+		}
+		for i, pane := range preset {
+			if i > 0 && pane.Split != "horizontal" && pane.Split != "vertical" {
+				errs = append(errs, fmt.Sprintf("layout_presets.%s[%d]: split %q is not valid", name, i, pane.Split))
+			}
+		}
+	}
+
+	// Validate per-project configs
+	for name, proj := range cfg.Projects {
+		if proj.Preset != "" {
+			if _, ok := cfg.LayoutPresets[proj.Preset]; !ok {
+				errs = append(errs, fmt.Sprintf("projects.%s: preset %q not found in layout_presets", name, proj.Preset))
+			}
+		}
+		if len(proj.Layout) == 0 && proj.Preset == "" {
+			continue // will use global default
 		}
 		for i, pane := range proj.Layout {
 			if i > 0 && pane.Split != "horizontal" && pane.Split != "vertical" {

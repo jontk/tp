@@ -137,6 +137,34 @@ layout:
 
 This maps directly to how tmux splits work, so any layout is possible — multiple columns, nested splits, etc. See [config.example.yaml](config.example.yaml) for more examples.
 
+### Layout presets
+
+Define reusable layouts and assign them to projects by name:
+
+```yaml
+layout_presets:
+    frontend:
+        - command: claude --continue || claude
+        - split: horizontal
+          percent: 60
+          command: vim .
+        - split: vertical
+          percent: 66
+          command: npm run dev
+        - split: vertical
+          percent: 50
+          command: ""
+          active: true
+
+projects:
+    my-webapp:
+        preset: frontend
+    another-webapp:
+        preset: frontend
+```
+
+Projects can use `preset:` to reference a named layout, or inline `layout:` for one-offs. Inline layout takes priority if both are set.
+
 ### Per-project overrides
 
 Override the layout for specific projects using the `projects` key:
