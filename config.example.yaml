@@ -1,0 +1,47 @@
+# tp - tmux project manager configuration
+#
+# Config location: ~/.config/tmux-projects/config.yaml
+# Created automatically on first run with sensible defaults.
+
+# Directories to scan for projects.
+# Each subdirectory within these paths becomes a selectable project.
+# Add multiple directories if your projects span different orgs or locations.
+source_dirs:
+    - /mnt/export/jontk/src/github.com/jontk
+    - /mnt/export/jontk/src/github.com/brokkr
+    - /mnt/export/jontk/src/github.com/asgardr-ai
+
+# Projects pre-selected in the picker on launch.
+# These are toggled on by default — you can still deselect them.
+defaults:
+    - nixconf
+    - s9s
+    - s9s-web
+
+# Tmux session name.
+session: projects
+
+# Pane layout for each project window.
+# The split topology is: left | right-top / right-bottom
+#
+#   position: left, right-top, right-bottom
+#   command:  command to run in the pane (empty string = interactive shell)
+#   percent:  split percentage (left percent is width, right percents are height)
+#   active:   which pane receives focus (only one should be true)
+layout:
+    panes:
+        # Left pane (40% width) - Claude Code with session resume
+        - command: claude --continue || claude
+          percent: 40
+          position: left
+
+        # Top-right pane (50% of right side height) - Editor
+        - command: vim .
+          percent: 50
+          position: right-top
+
+        # Bottom-right pane (50% of right side height) - Shell
+        - command: ""
+          percent: 50
+          position: right-bottom
+          active: true

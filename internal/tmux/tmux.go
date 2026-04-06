@@ -1,0 +1,169 @@
+package tmux
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/jontk/tp/internal/config"
+)
+
+func SessionExists(name string) bool {
+	cmd := exec.Command("tmux", "has-session", "-t", name)
+	return cmd.Run() == nil
+}
+
+func NewSession(name, window, dir string) error {
+	return run("new-session", "-d", "-s", name, "-n", window, "-c", dir)
+}
+
+func SetEnvironment(session, key, value string) error {
+	return run("set-environment", "-t", session, key, value)
+}
+
+func GetEnvironment(session, key string) string {
+	cmd := exec.Command("tmux", "show-environment", "-t", session, key)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	// Output format: KEY=value
+	parts := strings.SplitN(strings.TrimSpace(string(out)), "=", 2)
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return ""
+}
+
+func NewWindow(session, name, dir string) error {
+	return run("new-window", "-t", session, "-n", name, "-c", dir)
+}
+
+func SetWindowOption(target, option, value string) error {
+	return run("set-window-option", "-t", target, option, value)
+}
+
+func SplitWindow(target, dir string, horizontal bool, percent int) error {
+	flag := "-v"
+	if horizontal {
+		flag = "-h"
+	}
+	return run("split-window", "-t", target, flag, "-p", fmt.Sprintf("%d", percent), "-c", dir)
+}
+
+func SendKeys(target, keys string) error {
+	return run("send-keys", "-t", target, keys, "C-m")
+}
+
+func SelectPane(target string) error {
+	return run("select-pane", "-t", target)
+}
+
+func SelectWindow(target string) error {
+	return run("select-window", "-t", target)
+}
+
+func KillWindow(target string) error {
+	return run("kill-window", "-t", target)
+}
+
+func ListWindows(session string) ([]string, error) {
+	cmd := exec.Command("tmux", "list-windows", "-t", session, "-F", "#{window_name}")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var windows []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line != "" {
+			windows = append(windows, line)
+		}
+	}
+	return windows, nil
+}
+
+func Attach(session string, cc bool) error {
+	tmuxPath, err := exec.LookPath("tmux")
+	if err != nil {
+		return err
+	}
+
+	args := []string{"tmux"}
+	if cc {
+		args = append(args, "-CC")
+	}
+	args = append(args, "attach-session", "-t", session)
+
+	return syscall.Exec(tmuxPath, args, os.Environ())
+}
+
+func InsideTmux() bool {
+	return os.Getenv("TMUX") != ""
+}
+
+func IsITerm() bool {
+	return os.Getenv("TERM_PROGRAM") == "iTerm.app" || os.Getenv("LC_TERMINAL") == "iTerm2"
+}
+
+func SetupProjectWindow(session, name, dir string, layout config.LayoutConfig) error {
+	target := fmt.Sprintf("%s:%s", session, name)
+
+	SetWindowOption(target, "automatic-rename", "off")
+
+	// Split: create right pane (horizontal split)
+	rightPercent := 60
+	if len(layout.Panes) > 0 {
+		rightPercent = 100 - layout.Panes[0].Percent
+	}
+	if err := SplitWindow(target+".1", dir, true, rightPercent); err != nil {
+		return fmt.Errorf("split horizontal: %w", err)
+	}
+
+	// Split right pane vertically
+	bottomPercent := 50
+	if len(layout.Panes) > 2 {
+		bottomPercent = layout.Panes[2].Percent
+	}
+	if err := SplitWindow(target+".2", dir, false, bottomPercent); err != nil {
+		return fmt.Errorf("split vertical: %w", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Send commands to panes
+	paneTargets := []string{target + ".1", target + ".2", target + ".3"}
+	activePaneIdx := 2 // default: bottom-right shell
+
+	for i, pane := range layout.Panes {
+		if i >= len(paneTargets) {
+			break
+		}
+		if pane.Command != "" {
+			if err := SendKeys(paneTargets[i], pane.Command); err != nil {
+				return fmt.Errorf("send keys to pane %d: %w", i, err)
+			}
+		}
+		if pane.Active {
+			activePaneIdx = i
+		}
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	if activePaneIdx < len(paneTargets) {
+		SelectPane(paneTargets[activePaneIdx])
+	}
+
+	return nil
+}
+
+func run(args ...string) error {
+	cmd := exec.Command("tmux", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
