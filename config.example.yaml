@@ -47,10 +47,48 @@ layout:
       command: ""
       active: true
 
-# Per-project layout overrides.
-# Any project listed here uses its own layout instead of the global one.
+# Reusable layout presets.
+# Define layouts once and reference them by name in project configs.
 #
-# Example: frontend project with a dev server pane
+# layout_presets:
+#     frontend:
+#         - command: claude --continue || claude
+#         - split: horizontal
+#           percent: 60
+#           command: vim .
+#         - split: vertical
+#           percent: 66
+#           command: npm run dev
+#         - split: vertical
+#           percent: 50
+#           command: ""
+#           active: true
+#     wide:
+#         - command: claude --continue || claude
+#         - split: horizontal
+#           percent: 66
+#           command: vim .
+#         - split: horizontal
+#           percent: 50
+#           command: ""
+#         - split: vertical
+#           percent: 50
+#           command: ""
+#           active: true
+
+# Per-project layout overrides.
+# Projects can use preset: to reference a named layout, or inline layout:
+# for one-offs. Inline layout takes priority if both are set.
+#
+# projects:
+#     my-webapp:
+#         preset: frontend
+#     another-webapp:
+#         preset: frontend
+#     big-project:
+#         preset: wide
+#
+# Example: frontend project with inline layout (dev server pane)
 #
 #   ┌──────────────┬──────────────┐
 #   │              │   vim .      │
