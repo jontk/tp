@@ -172,8 +172,6 @@ func shortCmd(cmd string) string {
 	if cmd == "" {
 		return "shell"
 	}
-	cmd = strings.ReplaceAll(cmd, "claude --continue || claude", "claude")
-	cmd = strings.ReplaceAll(cmd, "claude --continue", "claude")
 	if len(cmd) > 12 {
 		parts := strings.Fields(cmd)
 		if len(parts) > 0 {
