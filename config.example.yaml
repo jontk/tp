@@ -27,50 +27,107 @@ session: projects
 #   command:  command to run in the pane (empty string = interactive shell)
 #   active:   which pane receives focus (only one should be true)
 #
-# Default layout: claude (left 40%) | vim (top-right) / shell (bottom-right)
+# tp is layout- and tool-agnostic: put any command you like in a pane.
+# Editors (vim/nvim/emacs/helix), shells, watchers (entr/watchexec),
+# log tailers (kubectl logs, docker compose logs), TUIs (lazygit, k9s,
+# htop), AI agents (claude, aider, codex, gemini) — all fair game.
+#
+# Default layout: vim (left) | shell (top-right, active) / lazygit (bottom-right)
 #
 #   ┌──────────────┬──────────────┐
-#   │              │   vim .      │
-#   │   claude     │              │
-#   │   --continue ├──────────────┤
 #   │              │    shell     │
-#   │              │  (active)    │
+#   │    vim .     │   (active)   │
+#   │              ├──────────────┤
+#   │              │   lazygit    │
 #   └──────────────┴──────────────┘
 #
 layout:
-    - command: claude --continue || claude
+    - command: vim .
     - split: horizontal
-      percent: 60
-      command: vim .
-    - split: vertical
-      percent: 50
+      percent: 40
       command: ""
       active: true
+    - split: vertical
+      percent: 50
+      command: lazygit
 
 # Reusable layout presets.
 # Define layouts once and reference them by name in project configs.
 #
+# The examples below show a few common workflow archetypes. Mix and match,
+# rename, or replace any of them to fit how you actually work.
+#
 # layout_presets:
+#
+#     # Editor-centric: just vim, a shell, and lazygit. Zero assumptions.
+#     #
+#     #   ┌──────────────┬──────────────┐
+#     #   │              │    shell     │
+#     #   │    vim .     ├──────────────┤
+#     #   │              │   lazygit    │
+#     #   └──────────────┴──────────────┘
+#     editor:
+#         - command: vim .
+#         - split: horizontal
+#           percent: 40
+#           command: ""
+#           active: true
+#         - split: vertical
+#           percent: 50
+#           command: lazygit
+#
+#     # Frontend: editor + dev server + test watcher + shell.
+#     #
+#     #   ┌──────────────┬──────────────┐
+#     #   │              │    vim .     │
+#     #   │   npm run    ├──────────────┤
+#     #   │     dev      │  npm test    │
+#     #   │              ├──────────────┤
+#     #   │              │    shell     │
+#     #   └──────────────┴──────────────┘
 #     frontend:
-#         - command: claude --continue || claude
+#         - command: npm run dev
 #         - split: horizontal
 #           percent: 60
 #           command: vim .
 #         - split: vertical
 #           percent: 66
-#           command: npm run dev
+#           command: npm test -- --watch
 #         - split: vertical
 #           percent: 50
 #           command: ""
 #           active: true
-#     wide:
-#         - command: claude --continue || claude
+#
+#     # Ops: logs tailing alongside an editor and a shell.
+#     #
+#     #   ┌──────────────┬──────────────┐
+#     #   │              │    vim .     │
+#     #   │    k9s       ├──────────────┤
+#     #   │              │    shell     │
+#     #   └──────────────┴──────────────┘
+#     ops:
+#         - command: k9s
 #         - split: horizontal
-#           percent: 66
+#           percent: 60
 #           command: vim .
-#         - split: horizontal
+#         - split: vertical
 #           percent: 50
 #           command: ""
+#           active: true
+#
+#     # AI-assisted: put an agent on the left, editor and shell on the right.
+#     # Swap `claude` for `aider`, `codex`, `gemini`, etc. as you like.
+#     #
+#     #   ┌──────────────┬──────────────┐
+#     #   │              │    vim .     │
+#     #   │   claude     ├──────────────┤
+#     #   │              │    shell     │
+#     #   └──────────────┴──────────────┘
+#     agent:
+#         - command: claude --continue || claude
+#         - split: horizontal
+#           percent: 60
+#           command: vim .
 #         - split: vertical
 #           percent: 50
 #           command: ""
@@ -83,52 +140,47 @@ layout:
 # projects:
 #     my-webapp:
 #         preset: frontend
-#     another-webapp:
-#         preset: frontend
-#     big-project:
-#         preset: wide
+#     infra:
+#         preset: ops
+#     dotfiles:
+#         preset: editor
 #
-# Example: frontend project with inline layout (dev server pane)
+# Example: Go backend with a test watcher pane
 #
 #   ┌──────────────┬──────────────┐
 #   │              │   vim .      │
-#   │   claude     ├──────────────┤
-#   │   --continue │  npm run dev │
-#   │              ├──────────────┤
-#   │              │    shell     │
+#   │   go test    ├──────────────┤
+#   │   (watch)    │    shell     │
 #   └──────────────┴──────────────┘
 #
 # projects:
-#     my-webapp:
+#     my-api:
 #         layout:
-#             - command: claude --continue || claude
+#             - command: watchexec -e go -- go test ./...
 #             - split: horizontal
 #               percent: 60
 #               command: vim .
-#             - split: vertical
-#               percent: 66
-#               command: npm run dev
 #             - split: vertical
 #               percent: 50
 #               command: ""
 #               active: true
 #
-# Example: infrastructure project with top-down layout
+# Example: database work — psql open, editor, shell
 #
-#   ┌─────────────────────┐
-#   │       claude        │
-#   ├──────────┬──────────┤
-#   │   vim    │  shell   │
-#   └──────────┴──────────┘
+#   ┌──────────────┬──────────────┐
+#   │              │   vim .      │
+#   │    psql      ├──────────────┤
+#   │              │    shell     │
+#   └──────────────┴──────────────┘
 #
 # projects:
-#     infra:
+#     analytics:
 #         layout:
-#             - command: claude --continue || claude
-#             - split: vertical
+#             - command: psql $DATABASE_URL
+#             - split: horizontal
 #               percent: 60
 #               command: vim .
-#             - split: horizontal
+#             - split: vertical
 #               percent: 50
 #               command: ""
 #               active: true
@@ -137,14 +189,14 @@ layout:
 #
 #   ┌──────────┬──────────┬──────────┐
 #   │          │          │  shell   │
-#   │  claude  │   vim    ├──────────┤
+#   │  lazygit │   vim    ├──────────┤
 #   │          │          │  shell   │
 #   └──────────┴──────────┴──────────┘
 #
 # projects:
 #     big-project:
 #         layout:
-#             - command: claude --continue || claude
+#             - command: lazygit
 #             - split: horizontal
 #               percent: 66
 #               command: vim .

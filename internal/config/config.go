@@ -108,9 +108,9 @@ func (p Profile) DisplayName() string {
 
 func DefaultLayout() []PaneConfig {
 	return []PaneConfig{
-		{Command: "claude --continue || claude"},
-		{Split: "horizontal", Percent: 60, Command: "vim ."},
-		{Split: "vertical", Percent: 50, Command: "", Active: true},
+		{Command: "vim ."},
+		{Split: "horizontal", Percent: 40, Command: "", Active: true},
+		{Split: "vertical", Percent: 50, Command: "lazygit"},
 	}
 }
 

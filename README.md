@@ -6,11 +6,10 @@ Built for workflows where you have many projects but only work on a handful at a
 
 ```
 ┌──────────────┬──────────────┐
-│              │   vim .      │
-│   claude     │              │
-│   --continue ├──────────────┤
 │              │    shell     │
-│              │  (selected)  │
+│    vim .     │  (selected)  │
+│              ├──────────────┤
+│              │   lazygit    │
 └──────────────┴──────────────┘
 ```
 
@@ -126,14 +125,14 @@ Layout is defined as sequential tmux splits. The first entry is the initial pane
 
 ```yaml
 layout:
-    - command: claude --continue || claude
+    - command: vim .
     - split: horizontal
-      percent: 60
-      command: vim .
-    - split: vertical
-      percent: 50
+      percent: 40
       command: ""
       active: true
+    - split: vertical
+      percent: 50
+      command: lazygit
 ```
 
 - `split`: `horizontal` (side-by-side) or `vertical` (top/bottom)
@@ -143,29 +142,41 @@ layout:
 
 This maps directly to how tmux splits work, so any layout is possible — multiple columns, nested splits, etc. See [config.example.yaml](config.example.yaml) for more examples.
 
+`tp` is layout- and tool-agnostic: any command works in a pane. Editors, shells, watchers (`entr`, `watchexec`), log tailers (`kubectl logs`, `docker compose logs`), TUIs (`lazygit`, `k9s`, `htop`), AI agents (`claude`, `aider`, `codex`, `gemini`) — all fair game.
+
 ### Layout presets
 
 Define reusable layouts and assign them to projects by name:
 
 ```yaml
 layout_presets:
+    editor:
+        - command: vim .
+        - split: horizontal
+          percent: 40
+          command: ""
+          active: true
+        - split: vertical
+          percent: 50
+          command: lazygit
+
     frontend:
-        - command: claude --continue || claude
+        - command: npm run dev
         - split: horizontal
           percent: 60
           command: vim .
         - split: vertical
           percent: 66
-          command: npm run dev
+          command: npm test -- --watch
         - split: vertical
           percent: 50
           command: ""
           active: true
 
 projects:
+    dotfiles:
+        preset: editor
     my-webapp:
-        preset: frontend
-    another-webapp:
         preset: frontend
 ```
 
@@ -175,70 +186,60 @@ Projects can use `preset:` to reference a named layout, or inline `layout:` for 
 
 Override the layout for specific projects using the `projects` key:
 
-**Frontend project** — add a dev server pane:
+**Editor-centric** — just an editor, a shell, and lazygit:
 
 ```yaml
 # ┌──────────┬──────────┐
-# │          │   vim    │
-# │  claude  ├──────────┤
-# │          │ dev srv  │
-# │          ├──────────┤
 # │          │  shell   │
+# │   vim    ├──────────┤
+# │          │ lazygit  │
 # └──────────┴──────────┘
 projects:
-    my-webapp:
+    dotfiles:
         layout:
-            - command: claude --continue || claude
+            - command: vim .
             - split: horizontal
-              percent: 60
-              command: vim .
-            - split: vertical
-              percent: 66
-              command: npm run dev
-            - split: vertical
-              percent: 50
+              percent: 40
               command: ""
               active: true
+            - split: vertical
+              percent: 50
+              command: lazygit
 ```
 
-**Go backend** — tests watching alongside:
+**Go backend** — a test watcher alongside the editor:
 
 ```yaml
 # ┌──────────┬──────────┐
 # │          │   vim    │
-# │  claude  ├──────────┤
-# │          │ go test  │
-# │          ├──────────┤
-# │          │  shell   │
+# │ go test  ├──────────┤
+# │ (watch)  │  shell   │
 # └──────────┴──────────┘
 projects:
     my-api:
         layout:
-            - command: claude --continue || claude
+            - command: watchexec -e go -- go test ./...
             - split: horizontal
               percent: 60
               command: vim .
-            - split: vertical
-              percent: 66
-              command: watchexec -e go -- go test ./...
             - split: vertical
               percent: 50
               command: ""
               active: true
 ```
 
-**Infrastructure project** — top-down layout with logs:
+**Ops / infra** — a cluster TUI with editor and shell:
 
 ```yaml
 # ┌─────────────────────┐
-# │       claude        │
+# │         k9s         │
 # ├──────────┬──────────┤
 # │   vim    │  shell   │
 # └──────────┴──────────┘
 projects:
     infra:
         layout:
-            - command: claude --continue || claude
+            - command: k9s
             - split: vertical
               percent: 60
               command: vim .
@@ -253,13 +254,13 @@ projects:
 ```yaml
 # ┌──────────┬──────────┬──────────┐
 # │          │          │  shell   │
-# │  claude  │   vim    ├──────────┤
+# │ lazygit  │   vim    ├──────────┤
 # │          │          │  shell   │
 # └──────────┴──────────┴──────────┘
 projects:
     big-project:
         layout:
-            - command: claude --continue || claude
+            - command: lazygit
             - split: horizontal
               percent: 66
               command: vim .

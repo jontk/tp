@@ -9,9 +9,9 @@ import (
 
 func TestRenderLayoutDefault(t *testing.T) {
 	layout := []config.PaneConfig{
-		{Command: "claude --continue || claude"},
-		{Split: "horizontal", Percent: 60, Command: "vim ."},
-		{Split: "vertical", Percent: 50, Command: "", Active: true},
+		{Command: "vim ."},
+		{Split: "horizontal", Percent: 40, Command: "", Active: true},
+		{Split: "vertical", Percent: 50, Command: "lazygit"},
 	}
 
 	result := RenderLayout(layout, 40, 7)
@@ -19,14 +19,14 @@ func TestRenderLayoutDefault(t *testing.T) {
 	if result == "" {
 		t.Fatal("expected non-empty output")
 	}
-	if !strings.Contains(result, "claude") {
-		t.Error("expected 'claude' in output")
-	}
 	if !strings.Contains(result, "vim") {
 		t.Error("expected 'vim' in output")
 	}
 	if !strings.Contains(result, "shell") {
 		t.Error("expected 'shell' in output")
+	}
+	if !strings.Contains(result, "lazygit") {
+		t.Error("expected 'lazygit' in output")
 	}
 	if !strings.Contains(result, "*") {
 		t.Error("expected active pane marker '*' in output")
@@ -39,7 +39,7 @@ func TestRenderLayoutDefault(t *testing.T) {
 
 func TestRenderLayoutWide(t *testing.T) {
 	layout := []config.PaneConfig{
-		{Command: "claude --continue || claude"},
+		{Command: "lazygit"},
 		{Split: "horizontal", Percent: 66, Command: "vim ."},
 		{Split: "horizontal", Percent: 50, Command: ""},
 		{Split: "vertical", Percent: 50, Command: "", Active: true},
@@ -99,8 +99,7 @@ func TestShortCmd(t *testing.T) {
 	}{
 		{"", "shell"},
 		{"vim .", "vim ."},
-		{"claude --continue || claude", "claude"},
-		{"claude --continue", "claude"},
+		{"lazygit", "lazygit"},
 		{"npm run dev", "npm run dev"},
 		{"a-very-long-command-name", "a-very-long-"},
 	}
