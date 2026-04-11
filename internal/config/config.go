@@ -117,7 +117,7 @@ func DefaultLayout() []PaneConfig {
 func DefaultConfig() *Config {
 	return &Config{
 		SourceDirs: []string{
-			filepath.Join(os.Getenv("HOME"), "src", "github.com"),
+			filepath.Join(os.Getenv("HOME"), "src", "github.com", "*"),
 		},
 		Defaults: []string{},
 		Session:  "projects",
@@ -184,7 +184,7 @@ func WriteDefault(path string) error {
 	}
 
 	header := "# tosk - tmux project manager configuration\n#\n" +
-		"# source_dirs: directories to scan for projects (each subdirectory = one project)\n" +
+		"# source_dirs: paths or glob patterns that resolve to project directories\n" +
 		"# defaults: projects pre-selected in the picker on launch\n" +
 		"# session: tmux session name\n" +
 		"# layout: pane layout as sequential tmux splits\n" +
@@ -196,6 +196,16 @@ func WriteDefault(path string) error {
 	return os.WriteFile(path, []byte(header+string(data)), 0644)
 }
 
+func expandTilde(path string) string {
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		home := os.Getenv("HOME")
+		if home != "" {
+			return home + path[1:]
+		}
+	}
+	return path
+}
+
 func Validate(cfg *Config) []string {
 	var errs []string
 
@@ -203,8 +213,17 @@ func Validate(cfg *Config) []string {
 		errs = append(errs, "source_dirs is empty")
 	}
 	for _, dir := range cfg.SourceDirs {
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			errs = append(errs, fmt.Sprintf("source_dirs: %q does not exist", dir))
+		expanded := expandTilde(dir)
+		// For glob patterns, validate the parent directory exists.
+		if strings.ContainsAny(expanded, "*?[") {
+			parent := filepath.Dir(expanded)
+			if _, err := os.Stat(parent); os.IsNotExist(err) {
+				errs = append(errs, fmt.Sprintf("source_dirs: parent %q does not exist (from %q)", parent, dir))
+			}
+		} else {
+			if _, err := os.Stat(expanded); os.IsNotExist(err) {
+				errs = append(errs, fmt.Sprintf("source_dirs: %q does not exist", dir))
+			}
 		}
 	}
 

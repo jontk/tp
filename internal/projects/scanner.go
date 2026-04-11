@@ -28,27 +28,72 @@ func (p Project) WindowName() string {
 	return p.Name
 }
 
-func Scan(dirs []string, sortMode string) ([]Project, error) {
-	var projects []Project
+// expandTilde replaces a leading ~ with the user's home directory.
+func expandTilde(path string) string {
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		home := os.Getenv("HOME")
+		if home != "" {
+			return home + path[1:]
+		}
+	}
+	return path
+}
 
-	for _, dir := range dirs {
-		entries, err := os.ReadDir(dir)
+// resolveSourceDir expands tildes and globs in a source_dirs entry,
+// returning the matched directory paths. Non-glob entries that are
+// directories are returned as-is. Non-directory matches and hidden
+// directories (starting with '.') are skipped.
+func resolveSourceDir(pattern string) ([]string, error) {
+	pattern = expandTilde(pattern)
+
+	// If no glob characters, treat as a literal path.
+	if !strings.ContainsAny(pattern, "*?[") {
+		info, err := os.Stat(pattern)
 		if err != nil {
 			if os.IsNotExist(err) {
-				continue
+				return nil, nil
 			}
 			return nil, err
 		}
+		if !info.IsDir() {
+			return nil, nil
+		}
+		return []string{pattern}, nil
+	}
 
-		for _, entry := range entries {
-			if !entry.IsDir() || entry.Name()[0] == '.' {
-				continue
-			}
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
 
+	var dirs []string
+	for _, m := range matches {
+		info, err := os.Stat(m)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		if filepath.Base(m)[0] == '.' {
+			continue
+		}
+		dirs = append(dirs, m)
+	}
+	return dirs, nil
+}
+
+func Scan(dirs []string, sortMode string) ([]Project, error) {
+	var projects []Project
+
+	for _, pattern := range dirs {
+		paths, err := resolveSourceDir(pattern)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, path := range paths {
 			p := Project{
-				Name: entry.Name(),
-				Path: filepath.Join(dir, entry.Name()),
-				Dir:  dir,
+				Name: filepath.Base(path),
+				Path: path,
+				Dir:  filepath.Dir(path),
 			}
 
 			if sortMode == "recent" {
