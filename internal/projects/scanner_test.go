@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-func TestScanEmpty(t *testing.T) {
+func TestScanEmptyGlob(t *testing.T) {
 	dir := t.TempDir()
-	projs, err := Scan([]string{dir}, "alphabetical")
+	projs, err := Scan([]string{filepath.Join(dir, "*")}, "alphabetical")
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -18,14 +18,14 @@ func TestScanEmpty(t *testing.T) {
 	}
 }
 
-func TestScanFindsProjects(t *testing.T) {
+func TestScanGlobFindsProjects(t *testing.T) {
 	dir := t.TempDir()
 	os.Mkdir(filepath.Join(dir, "alpha"), 0755)
 	os.Mkdir(filepath.Join(dir, "beta"), 0755)
 	os.Mkdir(filepath.Join(dir, ".hidden"), 0755)
 	os.WriteFile(filepath.Join(dir, "file.txt"), []byte("not a dir"), 0644)
 
-	projs, err := Scan([]string{dir}, "alphabetical")
+	projs, err := Scan([]string{filepath.Join(dir, "*")}, "alphabetical")
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
@@ -40,6 +40,41 @@ func TestScanFindsProjects(t *testing.T) {
 	}
 }
 
+func TestScanLiteralDir(t *testing.T) {
+	dir := t.TempDir()
+	proj := filepath.Join(dir, "myproject")
+	os.Mkdir(proj, 0755)
+
+	projs, err := Scan([]string{proj}, "alphabetical")
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+	if len(projs) != 1 {
+		t.Fatalf("expected 1 project, got %d", len(projs))
+	}
+	if projs[0].Name != "myproject" {
+		t.Errorf("project name = %q, want 'myproject'", projs[0].Name)
+	}
+}
+
+func TestScanPrefixGlob(t *testing.T) {
+	dir := t.TempDir()
+	os.Mkdir(filepath.Join(dir, "api-users"), 0755)
+	os.Mkdir(filepath.Join(dir, "api-billing"), 0755)
+	os.Mkdir(filepath.Join(dir, "webapp"), 0755)
+
+	projs, err := Scan([]string{filepath.Join(dir, "api-*")}, "alphabetical")
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+	if len(projs) != 2 {
+		t.Fatalf("expected 2 projects, got %d", len(projs))
+	}
+	if projs[0].Name != "api-billing" {
+		t.Errorf("first project = %q, want 'api-billing'", projs[0].Name)
+	}
+}
+
 func TestScanMultipleDirs(t *testing.T) {
 	dir1 := t.TempDir()
 	dir2 := t.TempDir()
@@ -47,16 +82,17 @@ func TestScanMultipleDirs(t *testing.T) {
 	os.Mkdir(filepath.Join(dir2, "shared"), 0755)
 	os.Mkdir(filepath.Join(dir2, "unique"), 0755)
 
-	projs, err := Scan([]string{dir1, dir2}, "alphabetical")
+	projs, err := Scan([]string{
+		filepath.Join(dir1, "*"),
+		filepath.Join(dir2, "*"),
+	}, "alphabetical")
 	if err != nil {
 		t.Fatalf("Scan() error: %v", err)
 	}
-	// Should have 3: shared from dir1, shared from dir2, unique
 	if len(projs) != 3 {
 		t.Fatalf("expected 3 projects, got %d", len(projs))
 	}
 
-	// Both "shared" projects should be marked as duplicates
 	dupes := 0
 	for _, p := range projs {
 		if p.HasDuplicate {
@@ -75,6 +111,41 @@ func TestScanSkipsNonexistentDirs(t *testing.T) {
 	}
 	if len(projs) != 0 {
 		t.Errorf("expected 0 projects, got %d", len(projs))
+	}
+}
+
+func TestScanSkipsNonexistentGlob(t *testing.T) {
+	projs, err := Scan([]string{"/nonexistent/path/*"}, "alphabetical")
+	if err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+	if len(projs) != 0 {
+		t.Errorf("expected 0 projects, got %d", len(projs))
+	}
+}
+
+func TestExpandTilde(t *testing.T) {
+	home := os.Getenv("HOME")
+	if home == "" {
+		t.Skip("HOME not set")
+	}
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"~/src", home + "/src"},
+		{"~", home},
+		{"/absolute/path", "/absolute/path"},
+		{"relative/path", "relative/path"},
+		{"~user/path", "~user/path"}, // only bare ~ is expanded
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := expandTilde(tt.input)
+			if got != tt.expected {
+				t.Errorf("expandTilde(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
 	}
 }
 

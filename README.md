@@ -81,12 +81,13 @@ See [config.example.yaml](config.example.yaml) for a fully commented example.
 
 ### source_dirs
 
-Directories to scan for projects. Each subdirectory becomes a selectable project:
+Paths or glob patterns that resolve to project directories. Tilde (`~`) is expanded to your home directory:
 
 ```yaml
 source_dirs:
-    - ~/src/github.com/myuser
-    - ~/src/github.com/myorg
+    - ~/src/github.com/myuser/*      # every subdir is a project
+    - ~/src/github.com/myuser/api-*  # only projects matching the prefix
+    - ~/src/github.com/myuser/myapp  # a single project (literal path)
 ```
 
 ### defaults

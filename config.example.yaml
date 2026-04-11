@@ -3,11 +3,16 @@
 # Config location: ~/.config/ratatosk/config.yaml
 # Created automatically on first run with sensible defaults.
 
-# Directories to scan for projects.
-# Each subdirectory within these paths becomes a selectable project.
+# Paths or glob patterns that resolve to project directories.
+# Tilde (~) is expanded to your home directory.
+#
+# Examples:
+#   ~/src/github.com/myuser/*      # every subdir is a project
+#   ~/src/github.com/myuser/api-*  # only projects matching the prefix
+#   ~/src/github.com/myuser/myapp  # a single project (literal path)
 source_dirs:
-    - ~/src/github.com/myuser
-    - ~/src/github.com/myorg
+    - ~/src/github.com/myuser/*
+    - ~/src/github.com/myorg/*
 
 # Projects pre-selected in the picker on launch.
 defaults:
