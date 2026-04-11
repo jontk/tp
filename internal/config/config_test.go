@@ -186,8 +186,12 @@ func TestValidate(t *testing.T) {
 		wantMatch string // substring that should appear in errors
 	}{
 		{
-			name:     "valid config",
-			cfg:      DefaultConfig(),
+			name: "valid config",
+			cfg: &Config{
+				SourceDirs: []string{os.TempDir() + "/*"},
+				Session:    "projects",
+				Layout:     DefaultLayout(),
+			},
 			wantErrs: 0,
 		},
 		{
