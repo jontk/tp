@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jontk/tp/internal/config"
+	"github.com/jontk/ratatosk/internal/config"
 )
 
 func SessionExists(name string) bool {

@@ -1,6 +1,6 @@
-# tp - tmux project manager configuration
+# tosk - tmux project manager configuration
 #
-# Config location: ~/.config/tmux-projects/config.yaml
+# Config location: ~/.config/ratatosk/config.yaml
 # Created automatically on first run with sensible defaults.
 
 # Directories to scan for projects.
@@ -27,7 +27,7 @@ session: projects
 #   command:  command to run in the pane (empty string = interactive shell)
 #   active:   which pane receives focus (only one should be true)
 #
-# tp is layout- and tool-agnostic: put any command you like in a pane.
+# ratatosk is layout- and tool-agnostic: put any command you like in a pane.
 # Editors (vim/nvim/emacs/helix), shells, watchers (entr/watchexec),
 # log tailers (kubectl logs, docker compose logs), TUIs (lazygit, k9s,
 # htop), AI agents (claude, aider, codex, gemini) — all fair game.

@@ -20,7 +20,7 @@ func statePath(profile string) string {
 	if profile != "" {
 		name = profile + ".yaml"
 	}
-	return filepath.Join(configDir, "tmux-projects", "state", name)
+	return filepath.Join(configDir, "ratatosk", "state", name)
 }
 
 func LoadState(profile string) *State {

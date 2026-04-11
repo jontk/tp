@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/jontk/tp/internal/config"
+	"github.com/jontk/ratatosk/internal/config"
 )
 
 // rect represents a pane's position in the grid

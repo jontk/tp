@@ -9,8 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/jontk/tp/internal/config"
-	"github.com/jontk/tp/internal/projects"
+	"github.com/jontk/ratatosk/internal/config"
+	"github.com/jontk/ratatosk/internal/projects"
 )
 
 type gitInfoMsg struct {
@@ -230,7 +230,7 @@ func (m Model) View() string {
 
 	// Header
 	var header strings.Builder
-	header.WriteString(titleStyle.Render("tp — tmux project picker"))
+	header.WriteString(titleStyle.Render("tosk — tmux project picker"))
 	header.WriteString("\n")
 	header.WriteString(m.filter.View())
 	header.WriteString("\n\n")
