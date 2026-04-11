@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jontk/tp/internal/config"
+	"github.com/jontk/ratatosk/internal/config"
 )
 
 func TestRenderLayoutDefault(t *testing.T) {

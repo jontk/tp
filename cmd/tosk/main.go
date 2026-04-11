@@ -9,10 +9,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/jontk/tp/internal/config"
-	"github.com/jontk/tp/internal/projects"
-	"github.com/jontk/tp/internal/tmux"
-	"github.com/jontk/tp/internal/tui"
+	"github.com/jontk/ratatosk/internal/config"
+	"github.com/jontk/ratatosk/internal/projects"
+	"github.com/jontk/ratatosk/internal/tmux"
+	"github.com/jontk/ratatosk/internal/tui"
 )
 
 var profile string
@@ -24,7 +24,7 @@ func main() {
 	// Auto-detect profile from current tmux session if not specified
 	if profile == "" && tmux.InsideTmux() {
 		if sess := currentSessionName(); sess != "" {
-			if p := tmux.GetEnvironment(sess, "TP_PROFILE"); p != "" {
+			if p := tmux.GetEnvironment(sess, "TOSK_PROFILE"); p != "" {
 				profile = p
 			}
 		}
@@ -336,23 +336,23 @@ func runConfig() {
 }
 
 func printHelp() {
-	fmt.Print(`tp — tmux project manager
+	fmt.Print(`tosk — tmux project manager
 
 Usage:
-  tp              Open picker — creates session or manages existing one
-  tp list         List current session windows
-  tp kill         Kill the current session
-  tp switch       Switch between profile sessions
-  tp validate     Validate config file
-  tp config       Open config in $EDITOR
-  tp help         Show this help
+  tosk              Open picker — creates session or manages existing one
+  tosk list         List current session windows
+  tosk kill         Kill the current session
+  tosk switch       Switch between profile sessions
+  tosk validate     Validate config file
+  tosk config       Open config in $EDITOR
+  tosk help         Show this help
 
 Flags:
-  -p <profile>    Use a named profile (e.g. tp -p work uses work.yaml)
+  -p <profile>    Use a named profile (e.g. tosk -p work uses work.yaml)
   --cc            Force iTerm2 control mode (-CC) on attach
 
-Config: ~/.config/tmux-projects/config.yaml
-       ~/.config/tmux-projects/<profile>.yaml
+Config: ~/.config/ratatosk/config.yaml
+       ~/.config/ratatosk/<profile>.yaml
 `)
 }
 
@@ -429,7 +429,7 @@ func createWindows(cfg *config.Config, selected []projects.Project, sessionExist
 				fmt.Fprintf(os.Stderr, "failed to create session: %v\n", err)
 				os.Exit(1)
 			}
-			tmux.SetEnvironment(cfg.Session, "TP_PROFILE", profile)
+			tmux.SetEnvironment(cfg.Session, "TOSK_PROFILE", profile)
 			if err := tmux.SetupProjectWindow(cfg.Session, wname, proj.Path, layout); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to setup window %s: %v\n", wname, err)
 			}

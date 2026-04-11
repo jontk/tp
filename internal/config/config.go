@@ -52,7 +52,7 @@ func PathForProfile(profile string) string {
 	if profile != "" {
 		name = profile + ".yaml"
 	}
-	return filepath.Join(configDir, "tmux-projects", name)
+	return filepath.Join(configDir, "ratatosk", name)
 }
 
 // ListProfiles returns all available profiles by scanning the config dir.
@@ -62,7 +62,7 @@ func ListProfiles() ([]Profile, error) {
 	if err != nil {
 		configDir = filepath.Join(os.Getenv("HOME"), ".config")
 	}
-	dir := filepath.Join(configDir, "tmux-projects")
+	dir := filepath.Join(configDir, "ratatosk")
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -183,7 +183,7 @@ func WriteDefault(path string) error {
 		return err
 	}
 
-	header := "# tp - tmux project manager configuration\n#\n" +
+	header := "# tosk - tmux project manager configuration\n#\n" +
 		"# source_dirs: directories to scan for projects (each subdirectory = one project)\n" +
 		"# defaults: projects pre-selected in the picker on launch\n" +
 		"# session: tmux session name\n" +

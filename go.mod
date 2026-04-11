@@ -1,4 +1,4 @@
-module github.com/jontk/tp
+module github.com/jontk/ratatosk
 
 go 1.26.1
 
